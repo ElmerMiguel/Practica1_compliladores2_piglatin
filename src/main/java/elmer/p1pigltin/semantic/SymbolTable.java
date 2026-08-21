@@ -3,6 +3,7 @@ package elmer.p1pigltin.semantic;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SymbolTable {
@@ -34,7 +35,7 @@ public class SymbolTable {
     public boolean declararStructVariable(String name, String structType) {
         return scopes.peek().symbols.putIfAbsent(name,
                 new Symbol(name, null, scopes.peek().name, Kind.STRUCT_VARIABLE,
-                        structType, null, -1, null)) == null;
+                    structType, null, -1, null, List.of())) == null;
     }
 
     public boolean declararStruct(String name, Map<String, Field> fields) {
@@ -43,8 +44,12 @@ public class SymbolTable {
     }
 
     public boolean declararFuncion(String name, Type returnType, boolean actio) {
+        return declararFuncion(name, returnType, actio, List.of());
+    }
+
+    public boolean declararFuncion(String name, Type returnType, boolean actio, List<Type> parameterTypes) {
         return scopes.peek().symbols.putIfAbsent(name,
-                Symbol.function(name, returnType, scopes.peek().name, actio)) == null;
+                Symbol.function(name, returnType, scopes.peek().name, actio, parameterTypes)) == null;
     }
 
     public Symbol resolver(String name) {
@@ -71,9 +76,11 @@ public class SymbolTable {
         private final int size;
         private final Map<String, Field> fields;
         private final boolean actio;
+        private final List<Type> parameterTypes;
 
         private Symbol(String name, Type type, String scope, Kind kind, String declaredType,
-                       String elementType, int size, Map<String, Field> fields) {
+                       String elementType, int size, Map<String, Field> fields,
+                       List<Type> parameterTypes) {
             this.name = name;
             this.type = type;
             this.scope = scope;
@@ -83,23 +90,26 @@ public class SymbolTable {
             this.size = size;
             this.fields = fields == null ? Map.of() : Map.copyOf(fields);
             this.actio = kind == Kind.FUNCTION && type == Type.VOID;
+            this.parameterTypes = List.copyOf(parameterTypes);
         }
 
         private static Symbol variable(String name, Type type, String scope) {
-            return new Symbol(name, type, scope, Kind.VARIABLE, type == null ? null : type.name(), null, -1, null);
+            return new Symbol(name, type, scope, Kind.VARIABLE, type == null ? null : type.name(), null, -1, null, List.of());
         }
 
         private static Symbol array(String name, String elementType, int size, String scope) {
-            return new Symbol(name, null, scope, Kind.ARRAY, elementType, elementType, size, null);
+            return new Symbol(name, null, scope, Kind.ARRAY, elementType, elementType, size, null, List.of());
         }
 
         private static Symbol structure(String name, Map<String, Field> fields, String scope) {
-            return new Symbol(name, null, scope, Kind.STRUCTURE, name, null, -1, fields);
+            return new Symbol(name, null, scope, Kind.STRUCTURE, name, null, -1, fields, List.of());
         }
 
-        private static Symbol function(String name, Type returnType, String scope, boolean actio) {
+        private static Symbol function(String name, Type returnType, String scope, boolean actio,
+                                       List<Type> parameterTypes) {
             return new Symbol(name, returnType, scope, Kind.FUNCTION,
-                returnType == null ? null : returnType.name(), null, -1, null);
+                    returnType == null ? null : returnType.name(), null, -1, null,
+                    parameterTypes);
         }
 
         public String name() { return name; }
@@ -111,6 +121,7 @@ public class SymbolTable {
         public int size() { return size; }
         public Map<String, Field> fields() { return fields; }
         public boolean actio() { return actio; }
+        public List<Type> parameterTypes() { return parameterTypes; }
     }
 
     public enum Kind { VARIABLE, ARRAY, STRUCTURE, STRUCT_VARIABLE, FUNCTION }

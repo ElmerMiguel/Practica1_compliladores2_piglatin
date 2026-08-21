@@ -7,6 +7,8 @@ import elmer.p1pigltin.core.ErrorReporter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SemanticAnalyzer {
     private final SymbolTable tabla;
@@ -37,8 +39,13 @@ public class SemanticAnalyzer {
 
     private void declararFuncion(AstNode node) {
         Type returnType = Type.fromName((String) node.attrs.get("tipoRetorno"));
+        int parameterCount = (Integer) node.attrs.get("paramCount");
+        List<Type> parameterTypes = new ArrayList<>();
+        for (int i = 0; i < parameterCount; i++) {
+            parameterTypes.add(Type.fromName((String) node.children.get(i).attrs.get("tipoDeclarado")));
+        }
         declarar(node, tabla.declararFuncion((String) node.attrs.get("nombre"), returnType,
-                Boolean.TRUE.equals(node.attrs.get("esActio"))), "Funcion ya declarada");
+                Boolean.TRUE.equals(node.attrs.get("esActio")), parameterTypes), "Funcion ya declarada");
     }
 
     public void verificarTipos(AstNode program) {
@@ -110,7 +117,7 @@ public class SemanticAnalyzer {
             case STRUCT_FIELD_INIT -> verificarFieldOrArrayInit(node);
             case ASSIGN -> verificarAsignacion(node);
             case BINARY_EXPR -> verificarBinaria(node);
-            case UNARY_EXPR -> verificar(node.children.get(0));
+            case UNARY_EXPR -> verificarUnaria(node);
             case LITERAL -> Type.fromName((String) node.attrs.get("tipoLiteral"));
             case VAR_ACCESS -> verificarAcceso(node);
             case PRINT -> { node.children.forEach(this::verificar); yield Type.VOID; }
@@ -163,7 +170,7 @@ public class SemanticAnalyzer {
 
     private Type verificarIf(AstNode node) {
         Type condition = verificar(node.children.get(0));
-        if (condition != Type.BOOL) error(node, "La condicion de si debe ser BOOL");
+        if (condition != Type.BOOL) error(node, "Corrupcion de Flujo: la condicion debe ser BOOL");
         boolean before = alcanzable;
         boolean allTerminate = true;
         for (int i = 1; i < node.children.size(); i++) {
@@ -181,7 +188,7 @@ public class SemanticAnalyzer {
         }
         Type condition = verificar(node.tipo == AstNode.Tipo.DO_WHILE ? node.children.get(1)
             : node.tipo == AstNode.Tipo.FOR ? node.children.get(1) : node.children.get(0));
-        if (condition != Type.BOOL) error(node, "La condicion del ciclo debe ser BOOL");
+        if (condition != Type.BOOL) error(node, "Corrupcion de Flujo: la condicion debe ser BOOL");
         cicloDepth++;
         if (node.tipo == AstNode.Tipo.FOR) {
             verificar(node.children.get(2));
@@ -217,8 +224,32 @@ public class SemanticAnalyzer {
             error(node, "Funcion no declarada: " + node.attrs.get("nombre"));
             return null;
         }
-        node.children.forEach(this::verificar);
+        if (node.children.size() != function.parameterTypes().size()) {
+            error(node, "Cantidad incorrecta de argumentos para funcion: " + node.attrs.get("nombre"));
+        }
+        int count = Math.min(node.children.size(), function.parameterTypes().size());
+        for (int i = 0; i < node.children.size(); i++) {
+            Type actual = verificar(node.children.get(i));
+            if (i < count && !function.parameterTypes().get(i).accepts(actual)) {
+                error(node.children.get(i), "Argumento incompatible en posicion " + i);
+            }
+        }
         return function.type();
+    }
+
+    private Type verificarUnaria(AstNode node) {
+        String operator = (String) node.attrs.get("operador");
+        Type operand = verificar(node.children.get(0));
+        if (operator.equals("non") && operand != Type.BOOL) {
+            error(node, "Corrupcion de Flujo: non requiere BOOL");
+            return null;
+        }
+        if (operator.equals("-") && operand != Type.NUMERUS && operand != Type.DECIMALIS
+                && operand != Type.LITTERA) {
+            error(node, "Operador - requiere NUMERUS, DECIMALIS o LITTERA");
+            return null;
+        }
+        return operand;
     }
 
     private Type verificarDeclaracion(AstNode node) {
@@ -266,6 +297,10 @@ public class SemanticAnalyzer {
         String operator = (String) node.attrs.get("operador");
         Type result = Type.resultOf(left, right, operator);
         if (result == null) error(node, "Operacion incompatible: " + left + " " + operator + " " + right);
+        if ((operator.equals("&&") || operator.equals("||"))
+                && (left != Type.BOOL || right != Type.BOOL)) {
+            error(node, "Corrupcion de Flujo: los operandos deben ser BOOL");
+        }
         return result;
     }
 
