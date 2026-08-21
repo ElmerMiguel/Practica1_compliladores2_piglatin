@@ -2,6 +2,12 @@ package elmer.p1pigltin;
 
 import elmer.p1pigltin.core.CompilationPipeline;
 import elmer.p1pigltin.core.CompilationPipeline.CompilationResult;
+import elmer.p1pigltin.ast.AstDotExporter;
+import elmer.p1pigltin.core.DotRenderer;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class P1Pigltin {
     public static void main(String[] args) {
@@ -144,6 +150,26 @@ public class P1Pigltin {
             System.out.println("Resultado: VALIDO");
             System.out.println("PigLatin:");
             System.out.println(result.pigLatin());
+            if (title.equals("EJEMPLO COMPLETO")) {
+                exportarAst(result);
+            }
+        }
+    }
+
+    private static void exportarAst(CompilationResult result) {
+        try {
+            Path directory = Path.of("target");
+            Files.createDirectories(directory);
+            Path dotPath = directory.resolve("ast-complete.dot");
+            Path pngPath = directory.resolve("ast-complete.png");
+            Files.writeString(dotPath, AstDotExporter.exportar(result.ast()), StandardCharsets.UTF_8);
+            DotRenderer.renderizarPng(Files.readString(dotPath), pngPath)
+                    .ifPresentOrElse(
+                            path -> System.out.println("AST PNG generado: " + path.toAbsolutePath()),
+                            () -> System.out.println("AST DOT generado; Graphviz no produjo PNG"));
+            System.out.println("AST DOT generado: " + dotPath.toAbsolutePath());
+        } catch (Exception exception) {
+            System.out.println("No se pudo exportar el AST: " + exception.getMessage());
         }
     }
 }

@@ -20,9 +20,15 @@ public final class AstDotExporter {
         String id = "n" + counter[0]++;
         dot.append("    ").append(id).append(" [label=\"")
                 .append(escape(label(node))).append("\"];\n");
-        for (AstNode child : node.children) {
+        for (int index = 0; index < node.children.size(); index++) {
+            AstNode child = node.children.get(index);
             String childId = exportarNodo(child, dot, counter);
-            dot.append("    ").append(id).append(" -> ").append(childId).append(";\n");
+            String edgeLabel = edgeLabel(node, index);
+            dot.append("    ").append(id).append(" -> ").append(childId);
+            if (edgeLabel != null) {
+                dot.append(" [label=\"").append(escape(edgeLabel)).append("\"]");
+            }
+            dot.append(";\n");
         }
         return id;
     }
@@ -50,6 +56,23 @@ public final class AstDotExporter {
             default -> { }
         }
         return String.join("\n", lines);
+    }
+
+    private static String edgeLabel(AstNode node, int index) {
+        return switch (node.tipo) {
+            case VAR_DECL, ARRAY_DECL -> index == 0 ? "init/size" : "init";
+            case IF -> index == 0 ? "condicion" : index == 1 ? "then" : "rama";
+            case WHILE -> index == 0 ? "condicion" : "body";
+            case DO_WHILE -> index == 0 ? "body" : "condicion";
+            case FOR -> index == 0 ? "init" : index == 1 ? "condicion" : index == 2 ? "update" : "body";
+            case ASSIGN -> index == 0 ? "target" : "value";
+            case FUNC_DEF -> index < (Integer) node.attrs.get("paramCount") ? "param" : "body";
+            case BLOCK -> "statement";
+            case BINARY_EXPR -> index == 0 ? "left" : "right";
+            case UNARY_EXPR, INC_DEC, RETURN -> "value";
+            case ACCESS_STEP_INDEX, STRUCT_FIELD_INIT -> "value";
+            default -> null;
+        };
     }
 
     private static void add(List<String> lines, Map<String, Object> attrs, String key) {

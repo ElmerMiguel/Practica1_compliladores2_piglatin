@@ -109,6 +109,7 @@ public class SemanticAnalyzer {
         if (node == null) return Type.VOID;
         return switch (node.tipo) {
             case PROGRAM -> { node.children.forEach(this::verificar); yield Type.VOID; }
+            case BLOCK -> { node.children.forEach(this::verificar); yield Type.VOID; }
             case VAR_DECL -> verificarDeclaracion(node);
             case ARRAY_DECL -> verificarArray(node);
             case STRUCT_DEF -> Type.VOID;

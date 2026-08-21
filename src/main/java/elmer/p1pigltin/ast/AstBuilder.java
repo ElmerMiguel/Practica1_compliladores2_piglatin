@@ -183,7 +183,7 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     }
 
     private AstNode block(ParserRuleContext ctx) {
-        return node(AstNode.Tipo.PROGRAM, ctx);
+        return node(AstNode.Tipo.BLOCK, ctx);
     }
 
     @Override
@@ -225,10 +225,13 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
 
     @Override
     public AstNode visitBoolShorthandDecl(CodexLatinusParser.BoolShorthandDeclContext ctx) {
+        String value = ctx.getChild(3).getText();
         return node(AstNode.Tipo.VAR_DECL, ctx)
                 .attr("nombre", ctx.IDENT().getText())
                 .attr("tipoDeclarado", "bool")
-                .attr("valor", ctx.getChild(3).getText());
+            .child(node(AstNode.Tipo.LITERAL, ctx)
+                .attr("valor", value)
+                .attr("tipoLiteral", "BOOL"));
     }
 
     @Override
@@ -449,8 +452,7 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
             case CodexLatinusParser.NUMERUS_LIT -> Integer.valueOf(text);
             case CodexLatinusParser.DECIMAL_LIT -> Double.valueOf(text);
             case CodexLatinusParser.TEXTUM_LIT, CodexLatinusParser.LITTERA_LIT -> text.substring(1, text.length() - 1);
-            case CodexLatinusParser.VERUM -> Boolean.TRUE;
-            case CodexLatinusParser.FALSUS -> Boolean.FALSE;
+            case CodexLatinusParser.VERUM, CodexLatinusParser.FALSUS -> text;
             default -> text;
         };
         return node(AstNode.Tipo.LITERAL, ctx)

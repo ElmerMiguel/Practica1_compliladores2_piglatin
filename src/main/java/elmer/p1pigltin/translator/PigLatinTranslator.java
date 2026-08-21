@@ -8,6 +8,7 @@ public class PigLatinTranslator {
     public String traducir(AstNode node) {
         return switch (node.tipo) {
             case PROGRAM -> node.children.stream().map(this::traducir).collect(Collectors.joining("\n"));
+            case BLOCK -> node.children.stream().map(this::traducir).collect(Collectors.joining("\n"));
             case VAR_DECL -> traducirDeclaracion(node);
                 case ARRAY_DECL -> traducirArray(node);
                 case STRUCT_DEF -> traducirStruct(node);
