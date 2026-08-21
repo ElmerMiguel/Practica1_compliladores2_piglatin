@@ -1,5 +1,9 @@
 grammar CodexLatinus;
 
+@header {
+package elmer.p1pigltin.antlr4;
+}
+
 /* ============================================================
    PROGRAMA
    ============================================================ */
@@ -24,7 +28,7 @@ funcSection
     ;
 
 mainSection
-    : SEC_MAIOR GT statement*
+    : SEC_MAIOR GT (varDeclaration | statement)*
     ;
 
 /* ============================================================
