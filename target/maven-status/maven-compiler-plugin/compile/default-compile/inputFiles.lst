@@ -11,3 +11,7 @@
 /home/elmer/Documentos/SS2026/Compi2/Lab/Practica1/P1Pigltin/src/main/java/elmer/p1pigltin/core/CompilationPipeline.java
 /home/elmer/Documentos/SS2026/Compi2/Lab/Practica1/P1Pigltin/src/main/java/elmer/p1pigltin/core/CompilerError.java
 /home/elmer/Documentos/SS2026/Compi2/Lab/Practica1/P1Pigltin/src/main/java/elmer/p1pigltin/core/ErrorReporter.java
+/home/elmer/Documentos/SS2026/Compi2/Lab/Practica1/P1Pigltin/src/main/java/elmer/p1pigltin/semantic/SemanticAnalyzer.java
+/home/elmer/Documentos/SS2026/Compi2/Lab/Practica1/P1Pigltin/src/main/java/elmer/p1pigltin/semantic/SymbolTable.java
+/home/elmer/Documentos/SS2026/Compi2/Lab/Practica1/P1Pigltin/src/main/java/elmer/p1pigltin/semantic/Type.java
+/home/elmer/Documentos/SS2026/Compi2/Lab/Practica1/P1Pigltin/src/main/java/elmer/p1pigltin/translator/PigLatinTranslator.java

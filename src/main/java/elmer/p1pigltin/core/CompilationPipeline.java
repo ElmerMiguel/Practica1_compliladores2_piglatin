@@ -4,6 +4,9 @@ import elmer.p1pigltin.ast.AstBuilder;
 import elmer.p1pigltin.ast.AstNode;
 import elmer.p1pigltin.antlr4.CodexLatinusLexer;
 import elmer.p1pigltin.antlr4.CodexLatinusParser;
+import elmer.p1pigltin.semantic.SemanticAnalyzer;
+import elmer.p1pigltin.semantic.SymbolTable;
+import elmer.p1pigltin.translator.PigLatinTranslator;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 
@@ -20,16 +23,31 @@ public class CompilationPipeline {
         parser.addErrorListener(new CodexErrorListener(reporter, CompilerError.Fase.SINTACTICA));
 
         AstNode ast = new AstBuilder().visit(parser.program());
-        return new CompilationResult(ast, reporter);
+        SymbolTable tabla = new SymbolTable();
+        String pigLatin = null;
+
+        if (!reporter.tieneErrores()) {
+            SemanticAnalyzer semantic = new SemanticAnalyzer(tabla, reporter);
+            semantic.declararSimbolos(ast);
+            semantic.verificarTipos(ast);
+            if (!reporter.tieneErrores()) {
+                pigLatin = new PigLatinTranslator().traducir(ast);
+            }
+        }
+        return new CompilationResult(ast, tabla, reporter, pigLatin);
     }
 
     public static final class CompilationResult {
         private final AstNode ast;
+        private final SymbolTable tabla;
         private final ErrorReporter errores;
+        private final String pigLatin;
 
-        public CompilationResult(AstNode ast, ErrorReporter errores) {
+        public CompilationResult(AstNode ast, SymbolTable tabla, ErrorReporter errores, String pigLatin) {
             this.ast = ast;
+            this.tabla = tabla;
             this.errores = errores;
+            this.pigLatin = pigLatin;
         }
 
         public AstNode ast() {
@@ -38,6 +56,14 @@ public class CompilationPipeline {
 
         public ErrorReporter errores() {
             return errores;
+        }
+
+        public SymbolTable tabla() {
+            return tabla;
+        }
+
+        public String pigLatin() {
+            return pigLatin;
         }
 
         public String prettyPrint() {
