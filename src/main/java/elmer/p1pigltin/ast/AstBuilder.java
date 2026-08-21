@@ -9,10 +9,27 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     @Override
     public AstNode visitProgram(CodexLatinusParser.ProgramContext ctx) {
         AstNode program = node(AstNode.Tipo.PROGRAM, ctx);
+        if (ctx.globalSection() != null) {
+            program.children.addAll(visit(ctx.globalSection()).children);
+        }
         if (ctx.mainSection() != null) {
             program.children.addAll(visit(ctx.mainSection()).children);
         }
         return program;
+    }
+
+    @Override
+    public AstNode visitGlobalSection(CodexLatinusParser.GlobalSectionContext ctx) {
+        AstNode section = node(AstNode.Tipo.PROGRAM, ctx);
+        for (CodexLatinusParser.GlobalDeclarationContext declaration : ctx.globalDeclaration()) {
+            section.child(visit(declaration));
+        }
+        return section;
+    }
+
+    @Override
+    public AstNode visitGlobalDeclaration(CodexLatinusParser.GlobalDeclarationContext ctx) {
+        return visitChildren(ctx);
     }
 
     @Override
@@ -47,12 +64,122 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     }
 
     @Override
+    public AstNode visitTypedArrayDecl(CodexLatinusParser.TypedArrayDeclContext ctx) {
+        AstNode array = node(AstNode.Tipo.ARRAY_DECL, ctx)
+                .attr("nombre", ctx.IDENT().getText())
+                .attr("tipoElemento", ctx.arrayType().getText());
+        array.child(visit(ctx.expr()));
+        if (ctx.arrayInit() != null) {
+            array.child(visit(ctx.arrayInit()));
+        }
+        return array;
+    }
+
+    @Override
+    public AstNode visitBoolArrayDecl(CodexLatinusParser.BoolArrayDeclContext ctx) {
+        AstNode array = node(AstNode.Tipo.ARRAY_DECL, ctx)
+                .attr("nombre", ctx.IDENT().getText())
+                .attr("tipoElemento", "bool");
+        array.child(visit(ctx.expr())).child(visit(ctx.arrayInit()));
+        return array;
+    }
+
+    @Override
+    public AstNode visitArrayInit(CodexLatinusParser.ArrayInitContext ctx) {
+        AstNode init = node(AstNode.Tipo.STRUCT_FIELD_INIT, ctx);
+        if (ctx.exprList() != null) {
+            for (CodexLatinusParser.ExprContext expression : ctx.exprList().expr()) {
+                init.child(visit(expression));
+            }
+        }
+        return init;
+    }
+
+    @Override
+    public AstNode visitStructDefinition(CodexLatinusParser.StructDefinitionContext ctx) {
+        AstNode structure = node(AstNode.Tipo.STRUCT_DEF, ctx)
+                .attr("nombre", ctx.IDENT().getText());
+        for (CodexLatinusParser.StructMemberContext member : ctx.structMember()) {
+            structure.child(visit(member));
+        }
+        return structure;
+    }
+
+    @Override
+    public AstNode visitStructMember(CodexLatinusParser.StructMemberContext ctx) {
+        String name = ctx.IDENT().getText();
+        return node(AstNode.Tipo.STRUCT_MEMBER, ctx)
+                .attr("nombre", name)
+                .attr("tipoDeclarado", ctx.memberType().getText())
+                .attr("esArreglo", ctx.KW_SERIES() != null);
+    }
+
+    @Override
+    public AstNode visitStructVarDeclaration(CodexLatinusParser.StructVarDeclarationContext ctx) {
+        return node(AstNode.Tipo.STRUCT_VAR_DECL, ctx)
+                .attr("nombre", ctx.IDENT(0).getText())
+                .attr("tipoDeclarado", ctx.IDENT(1).getText())
+                .child(visit(ctx.structLiteral()));
+    }
+
+    @Override
+    public AstNode visitStructLiteral(CodexLatinusParser.StructLiteralContext ctx) {
+        AstNode literal = node(AstNode.Tipo.STRUCT_FIELD_INIT, ctx);
+        for (CodexLatinusParser.StructFieldInitContext field : ctx.structFieldInit()) {
+            literal.child(visit(field));
+        }
+        return literal;
+    }
+
+    @Override
+    public AstNode visitStructFieldInit(CodexLatinusParser.StructFieldInitContext ctx) {
+        return node(AstNode.Tipo.STRUCT_FIELD_INIT, ctx)
+                .attr("nombreCampo", ctx.IDENT().getText())
+                .child(visit(ctx.expr()));
+    }
+
+    @Override
     public AstNode visitPrintStmt(CodexLatinusParser.PrintStmtContext ctx) {
         AstNode print = node(AstNode.Tipo.PRINT, ctx);
         for (CodexLatinusParser.ExprContext expression : ctx.expr()) {
             print.child(visit(expression));
         }
         return print;
+    }
+
+    @Override
+    public AstNode visitExprAssignment(CodexLatinusParser.ExprAssignmentContext ctx) {
+        return node(AstNode.Tipo.ASSIGN, ctx)
+                .child(visit(ctx.lvalue()))
+                .child(visit(ctx.expr()));
+    }
+
+    @Override
+    public AstNode visitStructLiteralAssignment(CodexLatinusParser.StructLiteralAssignmentContext ctx) {
+        return node(AstNode.Tipo.ASSIGN, ctx)
+                .child(visit(ctx.lvalue()))
+                .child(visit(ctx.structLiteral()));
+    }
+
+    @Override
+    public AstNode visitLvalue(CodexLatinusParser.LvalueContext ctx) {
+        AstNode access = node(AstNode.Tipo.VAR_ACCESS, ctx)
+                .attr("nombreBase", ctx.IDENT(0).getText());
+        int identifierIndex = 1;
+        int expressionIndex = 0;
+        for (int childIndex = 1; childIndex < ctx.getChildCount(); childIndex++) {
+            String text = ctx.getChild(childIndex).getText();
+            if (text.equals(".")) {
+                access.child(node(AstNode.Tipo.ACCESS_STEP_PROP, ctx)
+                        .attr("nombreCampo", ctx.IDENT(identifierIndex++).getText()));
+                childIndex++;
+            } else if (text.equals("[")) {
+                access.child(node(AstNode.Tipo.ACCESS_STEP_INDEX, ctx)
+                        .child(visit(ctx.expr(expressionIndex++))));
+                childIndex += 2;
+            }
+        }
+        return access;
     }
 
     @Override
@@ -114,9 +241,19 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     @Override
     public AstNode visitPostfixExpr(CodexLatinusParser.PostfixExprContext ctx) {
         AstNode result = visit(ctx.atom());
-        for (int i = 0; i < ctx.IDENT().size(); i++) {
-            result.child(node(AstNode.Tipo.ACCESS_STEP_PROP, ctx)
-                    .attr("nombreCampo", ctx.IDENT(i).getText()));
+        int identifierIndex = 0;
+        int expressionIndex = 0;
+        for (int childIndex = 1; childIndex < ctx.getChildCount(); childIndex++) {
+            String text = ctx.getChild(childIndex).getText();
+            if (text.equals(".")) {
+                result.child(node(AstNode.Tipo.ACCESS_STEP_PROP, ctx)
+                        .attr("nombreCampo", ctx.IDENT(identifierIndex++).getText()));
+                childIndex++;
+            } else if (text.equals("[")) {
+                result.child(node(AstNode.Tipo.ACCESS_STEP_INDEX, ctx)
+                        .child(visit(ctx.expr(expressionIndex++))));
+                childIndex += 2;
+            }
         }
         return result;
     }

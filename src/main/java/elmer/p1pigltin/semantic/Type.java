@@ -10,6 +10,9 @@ public enum Type {
     }
 
     public static Type fromName(String name) {
+        if (name == null) {
+            return null;
+        }
         return switch (name.toLowerCase()) {
             case "numerus" -> NUMERUS;
             case "decimalis" -> DECIMALIS;

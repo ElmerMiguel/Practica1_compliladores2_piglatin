@@ -9,15 +9,59 @@ public class PigLatinTranslator {
         return switch (node.tipo) {
             case PROGRAM -> node.children.stream().map(this::traducir).collect(Collectors.joining("\n"));
             case VAR_DECL -> traducirDeclaracion(node);
+                case ARRAY_DECL -> traducirArray(node);
+                case STRUCT_DEF -> traducirStruct(node);
+                case STRUCT_MEMBER -> PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre"))
+                    + " : " + PigLatinWordRules.toPigLatin((String) node.attrs.get("tipoDeclarado"));
+                case STRUCT_VAR_DECL -> PigLatinWordRules.toPigLatin("esto") + " "
+                    + PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + " : "
+                    + PigLatinWordRules.toPigLatin((String) node.attrs.get("tipoDeclarado")) + " "
+                    + traducir(node.children.get(0));
+                case STRUCT_FIELD_INIT -> traducirStructContent(node);
+                case ASSIGN -> traducir(node.children.get(0)) + " = " + traducir(node.children.get(1)) + ";";
             case BINARY_EXPR -> traducir(node.children.get(0)) + " "
                     + node.attrs.get("operador") + " " + traducir(node.children.get(1));
             case UNARY_EXPR -> node.attrs.get("operador") + traducir(node.children.get(0));
             case LITERAL -> traducirLiteral(node);
-            case VAR_ACCESS -> PigLatinWordRules.toPigLatin((String) node.attrs.get("nombreBase"));
+            case VAR_ACCESS -> traducirAcceso(node);
             case PRINT -> "%OINK " + node.children.stream()
                     .map(this::traducir).collect(Collectors.joining(" %OINK ")) + ";";
             default -> throw new IllegalStateException("Nodo no soportado: " + node.tipo);
         };
+    }
+
+    private String traducirArray(AstNode node) {
+        String result = "series " + PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre"))
+                + "[" + traducir(node.children.get(0)) + "] : "
+                + PigLatinWordRules.toPigLatin((String) node.attrs.get("tipoElemento"));
+        return node.children.size() > 1 ? result + " " + traducir(node.children.get(1)) + ";" : result + ";";
+    }
+
+    private String traducirStruct(AstNode node) {
+        return "structura " + PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + " { "
+                + node.children.stream().map(this::traducir).collect(Collectors.joining("; "))
+                + " } finis;";
+    }
+
+    private String traducirStructContent(AstNode node) {
+        if (node.attrs.containsKey("nombreCampo")) {
+            return PigLatinWordRules.toPigLatin((String) node.attrs.get("nombreCampo")) + ": "
+                    + traducir(node.children.get(0));
+        }
+        return "{ " + node.children.stream().map(this::traducir).collect(Collectors.joining(", ")) + " }";
+    }
+
+    private String traducirAcceso(AstNode node) {
+        StringBuilder result = new StringBuilder(
+                PigLatinWordRules.toPigLatin((String) node.attrs.get("nombreBase")));
+        for (AstNode step : node.children) {
+            if (step.tipo == AstNode.Tipo.ACCESS_STEP_PROP) {
+                result.append('.').append(PigLatinWordRules.toPigLatin((String) step.attrs.get("nombreCampo")));
+            } else {
+                result.append('[').append(traducir(step.children.get(0))).append(']');
+            }
+        }
+        return result.toString();
     }
 
     private String traducirDeclaracion(AstNode node) {
