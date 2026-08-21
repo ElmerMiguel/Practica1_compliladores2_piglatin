@@ -10,6 +10,10 @@ import java.util.Map;
 public class SemanticAnalyzer {
     private final SymbolTable tabla;
     private final ErrorReporter errores;
+    private int cicloDepth;
+    private Type retornoActual;
+    private boolean funcionActio;
+    private boolean alcanzable = true;
 
     public SemanticAnalyzer(SymbolTable tabla, ErrorReporter errores) {
         this.tabla = tabla;
@@ -24,8 +28,15 @@ public class SemanticAnalyzer {
             case ARRAY_DECL -> declararArray(program);
             case STRUCT_DEF -> declararStruct(program);
             case STRUCT_VAR_DECL -> declararStructVariable(program);
+            case FUNC_DEF -> declararFuncion(program);
             default -> { }
         }
+    }
+
+    private void declararFuncion(AstNode node) {
+        Type returnType = Type.fromName((String) node.attrs.get("tipoRetorno"));
+        declarar(node, tabla.declararFuncion((String) node.attrs.get("nombre"), returnType,
+                Boolean.TRUE.equals(node.attrs.get("esActio"))), "Funcion ya declarada");
     }
 
     public void verificarTipos(AstNode program) {
@@ -93,6 +104,7 @@ public class SemanticAnalyzer {
             case ARRAY_DECL -> verificarArray(node);
             case STRUCT_DEF -> Type.VOID;
             case STRUCT_VAR_DECL -> verificarStructLiteral(node, (String) node.attrs.get("tipoDeclarado"));
+            case FUNC_DEF -> verificarFuncion(node);
             case STRUCT_FIELD_INIT -> verificarFieldOrArrayInit(node);
             case ASSIGN -> verificarAsignacion(node);
             case BINARY_EXPR -> verificarBinaria(node);
@@ -100,8 +112,108 @@ public class SemanticAnalyzer {
             case LITERAL -> Type.fromName((String) node.attrs.get("tipoLiteral"));
             case VAR_ACCESS -> verificarAcceso(node);
             case PRINT -> { node.children.forEach(this::verificar); yield Type.VOID; }
+            case IF -> verificarIf(node);
+            case WHILE, DO_WHILE, FOR -> verificarLoop(node);
+            case RETURN -> verificarRetorno(node);
+            case BREAK -> { verificarInterrupcion(node, "interrumpe"); yield Type.VOID; }
+            case CONTINUE -> { verificarInterrupcion(node, "perge"); yield Type.VOID; }
+            case INC_DEC -> { verificar(node.children.get(0)); yield Type.VOID; }
+            case FUNC_CALL -> verificarLlamada(node);
             default -> { node.children.forEach(this::verificar); yield Type.VOID; }
         };
+    }
+
+    private Type verificarFuncion(AstNode node) {
+        Type previousReturn = retornoActual;
+        boolean previousActio = funcionActio;
+        boolean previousReachable = alcanzable;
+        retornoActual = Type.fromName((String) node.attrs.get("tipoRetorno"));
+        funcionActio = Boolean.TRUE.equals(node.attrs.get("esActio"));
+        alcanzable = true;
+        tabla.enterScope((String) node.attrs.get("nombre"));
+        int paramCount = (Integer) node.attrs.get("paramCount");
+        int localCount = (Integer) node.attrs.get("localCount");
+        for (int i = 0; i < paramCount; i++) {
+            AstNode param = node.children.get(i);
+            Type type = Type.fromName((String) param.attrs.get("tipoDeclarado"));
+            if (type != null) tabla.declarar((String) param.attrs.get("nombre"), type);
+        }
+        for (int i = paramCount; i < paramCount + localCount; i++) {
+            AstNode local = node.children.get(i);
+            declararSimbolos(local);
+        }
+        for (int i = paramCount + localCount; i < node.children.size(); i++) {
+            if (!alcanzable) {
+                error(node.children.get(i), "Codigo no alcanzable despues de una terminacion");
+            }
+            verificar(node.children.get(i));
+        }
+        if (!funcionActio && retornoActual != Type.VOID && alcanzable) {
+            error(node, "La funcion ratio no retorna en todos los caminos");
+        }
+        tabla.exitScope();
+        retornoActual = previousReturn;
+        funcionActio = previousActio;
+        alcanzable = previousReachable;
+        return Type.VOID;
+    }
+
+    private Type verificarIf(AstNode node) {
+        Type condition = verificar(node.children.get(0));
+        if (condition != Type.BOOL) error(node, "La condicion de si debe ser BOOL");
+        boolean before = alcanzable;
+        boolean allTerminate = true;
+        for (int i = 1; i < node.children.size(); i++) {
+            alcanzable = before;
+            verificar(node.children.get(i));
+            allTerminate &= !alcanzable;
+        }
+        alcanzable = before && !allTerminate;
+        return Type.VOID;
+    }
+
+    private Type verificarLoop(AstNode node) {
+        Type condition = verificar(node.tipo == AstNode.Tipo.DO_WHILE ? node.children.get(1)
+            : node.tipo == AstNode.Tipo.FOR ? node.children.get(1) : node.children.get(0));
+        if (condition != Type.BOOL) error(node, "La condicion del ciclo debe ser BOOL");
+        cicloDepth++;
+        if (node.tipo == AstNode.Tipo.FOR) {
+            verificar(node.children.get(0));
+            verificar(node.children.get(2));
+            verificar(node.children.get(3));
+        } else {
+            verificar(node.children.get(0));
+        }
+        cicloDepth--;
+        return Type.VOID;
+    }
+
+    private Type verificarRetorno(AstNode node) {
+        if (retornoActual == null) {
+            error(node, "reddere solo puede usarse dentro de una funcion");
+        } else {
+            Type actual = verificar(node.children.get(0));
+            if (funcionActio || retornoActual == Type.VOID || !retornoActual.accepts(actual)) {
+                error(node, "Tipo de retorno incompatible: se esperaba " + retornoActual + " y se obtuvo " + actual);
+            }
+        }
+        alcanzable = false;
+        return Type.VOID;
+    }
+
+    private void verificarInterrupcion(AstNode node, String keyword) {
+        if (cicloDepth == 0) error(node, keyword + " solo puede usarse dentro de un ciclo");
+        alcanzable = false;
+    }
+
+    private Type verificarLlamada(AstNode node) {
+        SymbolTable.Symbol function = tabla.resolver((String) node.attrs.get("nombre"));
+        if (function == null || function.kind() != SymbolTable.Kind.FUNCTION) {
+            error(node, "Funcion no declarada: " + node.attrs.get("nombre"));
+            return null;
+        }
+        node.children.forEach(this::verificar);
+        return function.type();
     }
 
     private Type verificarDeclaracion(AstNode node) {

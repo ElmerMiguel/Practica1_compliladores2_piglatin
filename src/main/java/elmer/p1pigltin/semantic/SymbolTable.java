@@ -42,6 +42,11 @@ public class SymbolTable {
                 Symbol.structure(name, fields, scopes.peek().name)) == null;
     }
 
+    public boolean declararFuncion(String name, Type returnType, boolean actio) {
+        return scopes.peek().symbols.putIfAbsent(name,
+                Symbol.function(name, returnType, scopes.peek().name, actio)) == null;
+    }
+
     public Symbol resolver(String name) {
         for (Scope scope : scopes) {
             Symbol symbol = scope.symbols.get(name);
@@ -65,9 +70,10 @@ public class SymbolTable {
         private final String elementType;
         private final int size;
         private final Map<String, Field> fields;
+        private final boolean actio;
 
         private Symbol(String name, Type type, String scope, Kind kind, String declaredType,
-                   String elementType, int size, Map<String, Field> fields) {
+                       String elementType, int size, Map<String, Field> fields) {
             this.name = name;
             this.type = type;
             this.scope = scope;
@@ -76,6 +82,7 @@ public class SymbolTable {
             this.elementType = elementType;
             this.size = size;
             this.fields = fields == null ? Map.of() : Map.copyOf(fields);
+            this.actio = kind == Kind.FUNCTION && type == Type.VOID;
         }
 
         private static Symbol variable(String name, Type type, String scope) {
@@ -90,6 +97,11 @@ public class SymbolTable {
             return new Symbol(name, null, scope, Kind.STRUCTURE, name, null, -1, fields);
         }
 
+        private static Symbol function(String name, Type returnType, String scope, boolean actio) {
+            return new Symbol(name, returnType, scope, Kind.FUNCTION,
+                returnType == null ? null : returnType.name(), null, -1, null);
+        }
+
         public String name() { return name; }
         public Type type() { return type; }
         public String scope() { return scope; }
@@ -98,9 +110,10 @@ public class SymbolTable {
         public String elementType() { return elementType; }
         public int size() { return size; }
         public Map<String, Field> fields() { return fields; }
+        public boolean actio() { return actio; }
     }
 
-    public enum Kind { VARIABLE, ARRAY, STRUCTURE, STRUCT_VARIABLE }
+    public enum Kind { VARIABLE, ARRAY, STRUCTURE, STRUCT_VARIABLE, FUNCTION }
 
     public record Field(String name, String typeName, boolean array) { }
 

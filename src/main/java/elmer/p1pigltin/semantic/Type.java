@@ -19,6 +19,7 @@ public enum Type {
             case "textum" -> TEXTUM;
             case "littera" -> LITTERA;
             case "bool", "verum", "falsus" -> BOOL;
+            case "void" -> VOID;
             default -> null;
         };
     }

@@ -9,62 +9,69 @@ public class P1Pigltin {
     public static void main(String[] args) {
         String validSource = """
                 VARIABILES>
-                series mis_enteros[2] : numerus {1, 1};
-                series nombres[2] : textum {"Hola", "Adios"};
-                structura Persona {
-                    esto nombre: textum;
-                    esto edad: numerus;
-                } finis;
-                esto mi_personaje : Persona {
-                    nombre: "Yennifer",
-                    edad: 999
-                }
                 MUNERA>
+                ratio numerus calcularPoder(esto fuerza : numerus, esto precision : decimalis) {
+                    VARIABILES[
+                        esto total : numerus fuerza * 2;
+                    ]
+                    reddere total;
+                } finis;
                 MAIOR>
-                mis_enteros[1] = 4;
-                >> mi_personaje.nombre;
+                esto edad : numerus 20;
+                esto fuerza : numerus 10;
+                esto poder : numerus calcularPoder(fuerza, 0.5);
+                si (edad >= 18) {
+                    fuerza = fuerza + 2;
+                } aliter {
+                    fuerza = 0;
+                } finis;
+                dum (fuerza < 20) {
+                    fuerza++;
+                } finis;
+                >> poder;
                 FINIS;
                 """;
 
-        String invalidSource = """
+        String invalidReturn = """
                 VARIABILES>
-                series valores[2] : numerus {1, 2};
-                structura Dato {
-                    esto valor: numerus;
-                    esto valor: textum;
+                MUNERA>
+                ratio numerus calcularPoder() {
+                    reddere 3.4;
                 } finis;
                 MAIOR>
-                valores[4] = 3;
                 FINIS;
                 """;
 
-        String nestedSource = """
+        String invalidUnreachable = """
                 VARIABILES>
-                structura Animal {
-                    esto nombre: textum,
-                    esto apodo: textum
-                } finis;
-                structura Selva {
-                    esto valido : verum,
-                    series animales : Animal
-                } finis;
-                esto mi_selva: Selva {
-                    valido: verum,
-                    animales: Animal[7]
-                }
                 MUNERA>
+                ratio numerus calcularPoder() {
+                    reddere 1;
+                    >> "no debe ejecutarse";
+                } finis;
                 MAIOR>
-                mi_selva.animales[1] = {
-                    nombre: "Perro",
-                    apodo: "Canis"
-                }
+                FINIS;
+                """;
+
+        String invalidMissingReturn = """
+                VARIABILES>
+                MUNERA>
+                ratio numerus calcularPoder(esto edad : numerus) {
+                    si (edad >= 18) {
+                        reddere 1;
+                    } aliter {
+                        >> "sin retorno";
+                    } finis;
+                } finis;
+                MAIOR>
                 FINIS;
                 """;
 
         CompilationPipeline pipeline = new CompilationPipeline();
         printResult("CASO VALIDO", pipeline.compile(validSource));
-        printResult("CASO INVALIDO", pipeline.compile(invalidSource));
-        printResult("CASO ANIDADO", pipeline.compile(nestedSource));
+        printResult("RETORNO INVALIDO", pipeline.compile(invalidReturn));
+        printResult("CODIGO INALCANZABLE", pipeline.compile(invalidUnreachable));
+        printResult("RETORNO INCOMPLETO", pipeline.compile(invalidMissingReturn));
     }
 
     private static void printResult(String title, CompilationResult result) {
