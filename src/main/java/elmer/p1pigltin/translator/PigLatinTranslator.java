@@ -28,7 +28,7 @@ public class PigLatinTranslator {
                         + traducir(node.children.get(1)) + " } finis;";
                     case DO_WHILE -> "facere { " + traducir(node.children.get(0)) + " } dum ("
                         + traducir(node.children.get(1)) + ");";
-                    case FOR -> "per (" + traducir(node.children.get(0)) + "; "
+                    case FOR -> "per (" + quitarPuntoYComa(traducir(node.children.get(0))) + "; "
                         + traducir(node.children.get(1)) + "; " + traducir(node.children.get(2)) + ") { "
                         + traducir(node.children.get(3)) + " }";
                     case INC_DEC -> traducir(node.children.get(0)) + node.attrs.get("operador") + ";";
@@ -43,6 +43,7 @@ public class PigLatinTranslator {
             case VAR_ACCESS -> traducirAcceso(node);
             case PRINT -> "%OINK " + node.children.stream()
                     .map(this::traducir).collect(Collectors.joining(" %OINK ")) + ";";
+                case READ -> "%OINK_OINK";
             default -> throw new IllegalStateException("Nodo no soportado: " + node.tipo);
         };
     }
@@ -112,6 +113,10 @@ public class PigLatinTranslator {
     private String traducirLlamada(AstNode node) {
         return PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + "("
                 + node.children.stream().map(this::traducir).collect(Collectors.joining(", ")) + ")";
+    }
+
+    private String quitarPuntoYComa(String value) {
+        return value.endsWith(";") ? value.substring(0, value.length() - 1) : value;
     }
 
     private String traducirDeclaracion(AstNode node) {

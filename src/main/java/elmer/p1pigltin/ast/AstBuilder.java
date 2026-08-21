@@ -316,6 +316,12 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     }
 
     @Override
+    public AstNode visitReadStmt(CodexLatinusParser.ReadStmtContext ctx) {
+        return node(AstNode.Tipo.READ, ctx)
+                .attr("nombre", ctx.IDENT() == null ? null : ctx.IDENT().getText());
+    }
+
+    @Override
     public AstNode visitExprAssignment(CodexLatinusParser.ExprAssignmentContext ctx) {
         return node(AstNode.Tipo.ASSIGN, ctx)
                 .child(visit(ctx.lvalue()))

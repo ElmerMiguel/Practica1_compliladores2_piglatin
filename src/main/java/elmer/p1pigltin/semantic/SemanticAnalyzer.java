@@ -6,6 +6,7 @@ import elmer.p1pigltin.core.ErrorReporter;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class SemanticAnalyzer {
     private final SymbolTable tabla;
@@ -29,6 +30,7 @@ public class SemanticAnalyzer {
             case STRUCT_DEF -> declararStruct(program);
             case STRUCT_VAR_DECL -> declararStructVariable(program);
             case FUNC_DEF -> declararFuncion(program);
+            case FOR -> declararSimbolos(program.children.get(0));
             default -> { }
         }
     }
@@ -112,6 +114,7 @@ public class SemanticAnalyzer {
             case LITERAL -> Type.fromName((String) node.attrs.get("tipoLiteral"));
             case VAR_ACCESS -> verificarAcceso(node);
             case PRINT -> { node.children.forEach(this::verificar); yield Type.VOID; }
+            case READ -> verificarLectura(node);
             case IF -> verificarIf(node);
             case WHILE, DO_WHILE, FOR -> verificarLoop(node);
             case RETURN -> verificarRetorno(node);
@@ -173,12 +176,14 @@ public class SemanticAnalyzer {
     }
 
     private Type verificarLoop(AstNode node) {
+        if (node.tipo == AstNode.Tipo.FOR) {
+            verificar(node.children.get(0));
+        }
         Type condition = verificar(node.tipo == AstNode.Tipo.DO_WHILE ? node.children.get(1)
             : node.tipo == AstNode.Tipo.FOR ? node.children.get(1) : node.children.get(0));
         if (condition != Type.BOOL) error(node, "La condicion del ciclo debe ser BOOL");
         cicloDepth++;
         if (node.tipo == AstNode.Tipo.FOR) {
-            verificar(node.children.get(0));
             verificar(node.children.get(2));
             verificar(node.children.get(3));
         } else {
@@ -273,14 +278,15 @@ public class SemanticAnalyzer {
         }
         String currentType = symbol.declaredType();
         Type currentPrimitive = symbol.type();
+        boolean currentIsArray = symbol.kind() == SymbolTable.Kind.ARRAY;
         for (AstNode step : node.children) {
             if (step.tipo == AstNode.Tipo.ACCESS_STEP_INDEX) {
                 Integer index = constantInteger(step.children.get(0));
-                if (index != null && symbol.kind() == SymbolTable.Kind.ARRAY
-                        && (index < 0 || index >= symbol.size())) {
+            if (index != null && currentIsArray && symbol.kind() == SymbolTable.Kind.ARRAY
+                && (index < 0 || index >= symbol.size())) {
                     error(step, "Indice fuera de rango en '" + name + "': " + index);
                 }
-                currentType = symbol.elementType();
+            currentIsArray = false;
                 currentPrimitive = Type.fromName(currentType);
             } else {
                 String fieldName = (String) step.attrs.get("nombreCampo");
@@ -292,6 +298,7 @@ public class SemanticAnalyzer {
                 }
                 SymbolTable.Field field = structure.fields().get(fieldName);
                 currentType = field.typeName();
+                currentIsArray = field.array();
                 currentPrimitive = Type.fromName(currentType);
             }
         }
@@ -314,6 +321,7 @@ public class SemanticAnalyzer {
         SymbolTable.Symbol symbol = tabla.resolver((String) access.attrs.get("nombreBase"));
         if (symbol == null) return null;
         String currentType = symbol.declaredType();
+        boolean currentIsArray = symbol.kind() == SymbolTable.Kind.ARRAY;
         for (AstNode step : access.children) {
             if (step.tipo == AstNode.Tipo.ACCESS_STEP_PROP) {
                 SymbolTable.Symbol structure = tabla.resolver(currentType);
@@ -321,8 +329,9 @@ public class SemanticAnalyzer {
                 SymbolTable.Field field = structure.fields().get(step.attrs.get("nombreCampo"));
                 if (field == null) return null;
                 currentType = field.typeName();
-            } else if (symbol.kind() == SymbolTable.Kind.ARRAY) {
-                currentType = symbol.elementType();
+                currentIsArray = field.array();
+            } else if (currentIsArray) {
+                currentIsArray = false;
             }
         }
         return currentType;
@@ -358,11 +367,16 @@ public class SemanticAnalyzer {
     }
 
     private Integer constantInteger(AstNode node) {
-        if (node != null && node.tipo == AstNode.Tipo.LITERAL
-                && "NUMERUS".equals(node.attrs.get("tipoLiteral"))) {
-            return ((Number) node.attrs.get("valor")).intValue();
-        }
+        Optional<Object> value = ConstantFolder.evaluar(node);
+        if (value.isPresent() && value.get() instanceof Number number
+                && number.doubleValue() == number.intValue()) return number.intValue();
         return null;
+    }
+
+    private Type verificarLectura(AstNode node) {
+        String name = (String) node.attrs.get("nombre");
+        if (name != null && tabla.resolver(name) == null) error(node, "Variable no declarada: " + name);
+        return Type.VOID;
     }
 
     private void declarar(AstNode node, boolean success, String message) {

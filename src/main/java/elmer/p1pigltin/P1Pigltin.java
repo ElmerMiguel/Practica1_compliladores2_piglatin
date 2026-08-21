@@ -1,90 +1,149 @@
-
 package elmer.p1pigltin;
 
 import elmer.p1pigltin.core.CompilationPipeline;
 import elmer.p1pigltin.core.CompilationPipeline.CompilationResult;
 
 public class P1Pigltin {
-
     public static void main(String[] args) {
-        String validSource = """
+        CompilationPipeline pipeline = new CompilationPipeline();
+        printResult("PERSONA", pipeline.compile("""
                 VARIABILES>
+                structura Persona {
+                    esto nombre: textum;
+                    esto edad: numerus;
+                } finis;
+                esto mi_personaje : Persona {
+                    nombre: "Yennifer",
+                    edad: 999
+                }
                 MUNERA>
-                ratio numerus calcularPoder(esto fuerza : numerus, esto precision : decimalis) {
+                MAIOR>
+                >> mi_personaje.nombre;
+                FINIS;
+                """));
+
+        printResult("ANIMAL Y SELVA", pipeline.compile("""
+                VARIABILES>
+                structura Animal {
+                    esto nombre: textum,
+                    esto apodo: textum
+                } finis;
+                structura Selva {
+                    esto valido : verum,
+                    series animales : Animal
+                } finis;
+                esto mi_selva: Selva {
+                    valido: verum,
+                    animales: Animal[7]
+                }
+                MUNERA>
+                MAIOR>
+                mi_selva.animales[1] = {
+                    nombre: "Perro",
+                    apodo: "Canis"
+                }
+                >> mi_selva.animales[1].nombre;
+                FINIS;
+                """));
+
+        printResult("ARREGLOS", pipeline.compile("""
+                VARIABILES>
+                series mis_enteros[2] : numerus {1, 1};
+                series nombres[2] : textum {"Hola", "Adios"};
+                MUNERA>
+                MAIOR>
+                >> nombres[0];
+                FINIS;
+                """));
+
+        printResult("CICLOS", pipeline.compile("""
+                VARIABILES>
+                esto x : numerus 0;
+                MUNERA>
+                MAIOR>
+                dum (x < 10) {
+                    x = x + 1;
+                    perge;
+                } finis;
+                facere {
+                    x++;
+                    interrumpe;
+                } dum (x < 10);
+                per (esto i : numerus 0; i < 10; i++) {
+                    perge;
+                }
+                FINIS;
+                """));
+
+        printResult("EJEMPLO COMPLETO", pipeline.compile("""
+                VARIABILES>
+                esto edad : numerus 20;
+                esto cifrado : falsus;
+                esto comandante : textum "Estudiante X";
+                esto fuerza : numerus 10;
+                esto poder : numerus 0;
+                MUNERA>
+                ratio numerus calcularPoder(esto fuerza : numerus) {
                     VARIABILES[
                         esto total : numerus fuerza * 2;
                     ]
                     reddere total;
                 } finis;
                 MAIOR>
-                esto edad : numerus 20;
-                esto fuerza : numerus 10;
-                esto poder : numerus calcularPoder(fuerza, 0.5);
+                >> "Hola comandante!";
+                >> "Ingresa tu nombre por favor";
+                comandante <<
+                >> "Bienvenido" >> comandante;
+                >> "Ingresa tu edad";
+                edad <<
                 si (edad >= 18) {
-                    fuerza = fuerza + 2;
-                } aliter {
-                    fuerza = 0;
+                    cifrado = verum;
+                    fuerza = 12;
                 } finis;
-                dum (fuerza < 20) {
-                    fuerza++;
-                } finis;
-                >> poder;
+                >> "Tu poder es: " >> calcularPoder(fuerza);
+                >> "La puerta esta cifrada?" >> cifrado;
                 FINIS;
-                """;
+                """));
 
-        String invalidReturn = """
+        printResult("ERROR ATRIBUTO DUPLICADO", pipeline.compile("""
                 VARIABILES>
-                MUNERA>
-                ratio numerus calcularPoder() {
-                    reddere 3.4;
+                structura Dato {
+                    esto valor: numerus;
+                    esto valor: textum;
                 } finis;
+                MUNERA>
                 MAIOR>
                 FINIS;
-                """;
+                """));
 
-        String invalidUnreachable = """
+        printResult("ERROR INTERRUMPE FUERA DE CICLO", pipeline.compile("""
                 VARIABILES>
                 MUNERA>
-                ratio numerus calcularPoder() {
-                    reddere 1;
-                    >> "no debe ejecutarse";
-                } finis;
                 MAIOR>
+                interrumpe;
                 FINIS;
-                """;
+                """));
 
-        String invalidMissingReturn = """
+            printResult("ERROR INDICE CONSTANTE COMPUESTO", pipeline.compile("""
                 VARIABILES>
+                series valores[4] : numerus {1, 2, 3, 4};
                 MUNERA>
-                ratio numerus calcularPoder(esto edad : numerus) {
-                    si (edad >= 18) {
-                        reddere 1;
-                    } aliter {
-                        >> "sin retorno";
-                    } finis;
-                } finis;
                 MAIOR>
+                valores[2 + 3] = 1;
                 FINIS;
-                """;
-
-        CompilationPipeline pipeline = new CompilationPipeline();
-        printResult("CASO VALIDO", pipeline.compile(validSource));
-        printResult("RETORNO INVALIDO", pipeline.compile(invalidReturn));
-        printResult("CODIGO INALCANZABLE", pipeline.compile(invalidUnreachable));
-        printResult("RETORNO INCOMPLETO", pipeline.compile(invalidMissingReturn));
+                """));
     }
 
     private static void printResult(String title, CompilationResult result) {
+        System.out.println("====================================");
         System.out.println(title);
         System.out.println(result.prettyPrint());
-        if (!result.errores().tieneErrores()) {
+        if (result.errores().tieneErrores()) {
+            System.out.println("Resultado: ERROR SEMANTICO/SINTACTICO");
+        } else {
+            System.out.println("Resultado: VALIDO");
             System.out.println("PigLatin:");
             System.out.println(result.pigLatin());
-        }
-        System.out.println("Snapshots de pila: " + result.pila().size());
-        result.pila().stream().limit(10).forEach(System.out::println);
-        if (!result.pila().isEmpty()) {
-            System.out.println("Ultimo snapshot: " + result.pila().get(result.pila().size() - 1));
         }
     }
 }
