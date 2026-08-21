@@ -22,6 +22,8 @@ public class CompilationPipeline {
         parser.removeErrorListeners();
         parser.addErrorListener(new CodexErrorListener(reporter, CompilerError.Fase.SINTACTICA));
 
+        ParseStackRecorder stackRecorder = new ParseStackRecorder();
+        parser.addParseListener(stackRecorder);
         AstNode ast = new AstBuilder().visit(parser.program());
         SymbolTable tabla = new SymbolTable();
         String pigLatin = null;
@@ -34,7 +36,7 @@ public class CompilationPipeline {
                 pigLatin = new PigLatinTranslator().traducir(ast);
             }
         }
-        return new CompilationResult(ast, tabla, reporter, pigLatin);
+        return new CompilationResult(ast, tabla, reporter, pigLatin, stackRecorder.snapshots());
     }
 
     public static final class CompilationResult {
@@ -42,12 +44,15 @@ public class CompilationPipeline {
         private final SymbolTable tabla;
         private final ErrorReporter errores;
         private final String pigLatin;
+        private final java.util.List<ParseStackRecorder.ParseStackSnapshot> pila;
 
-        public CompilationResult(AstNode ast, SymbolTable tabla, ErrorReporter errores, String pigLatin) {
+        public CompilationResult(AstNode ast, SymbolTable tabla, ErrorReporter errores, String pigLatin,
+                     java.util.List<ParseStackRecorder.ParseStackSnapshot> pila) {
             this.ast = ast;
             this.tabla = tabla;
             this.errores = errores;
             this.pigLatin = pigLatin;
+            this.pila = java.util.List.copyOf(pila);
         }
 
         public AstNode ast() {
@@ -64,6 +69,10 @@ public class CompilationPipeline {
 
         public String pigLatin() {
             return pigLatin;
+        }
+
+        public java.util.List<ParseStackRecorder.ParseStackSnapshot> pila() {
+            return pila;
         }
 
         public String prettyPrint() {

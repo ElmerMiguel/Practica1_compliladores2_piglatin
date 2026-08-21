@@ -81,5 +81,10 @@ public class P1Pigltin {
             System.out.println("PigLatin:");
             System.out.println(result.pigLatin());
         }
+        System.out.println("Snapshots de pila: " + result.pila().size());
+        result.pila().stream().limit(10).forEach(System.out::println);
+        if (!result.pila().isEmpty()) {
+            System.out.println("Ultimo snapshot: " + result.pila().get(result.pila().size() - 1));
+        }
     }
 }
