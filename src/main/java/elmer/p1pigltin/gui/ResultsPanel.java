@@ -29,6 +29,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.Image;
@@ -88,9 +89,21 @@ public class ResultsPanel extends JPanel {
         super(new BorderLayout());
         outputPanel = createSectionPanel("2. Salida / Consola & Traduccion PigLatin", new RTextScrollPane(pigLatinArea));
         astPanel = createSectionPanel("3. Arbol AST", buildAstTab());
-        symbolsPanel = createSectionPanel("4. Simbolos", new JScrollPane(symbolsTable));
-        stackPanel = createSectionPanel("5. Pila ANTLR", buildStackTab());
-        errorsPanel = createSectionPanel("6. Errores", new JScrollPane(errorsTable));
+        symbolsPanel = createSectionPanelWithOpenButton(
+            "4. Simbolos",
+            new JScrollPane(symbolsTable),
+            this::openSymbolsInWindow
+        );
+        stackPanel = createSectionPanelWithOpenButton(
+            "5. Pila ANTLR",
+            buildStackTab(),
+            this::openStackInWindow
+        );
+        errorsPanel = createSectionPanelWithOpenButton(
+            "6. Errores",
+            new JScrollPane(errorsTable),
+            this::openErrorsInWindow
+        );
         bottomRightPanel = new JPanel(new GridLayout(1, 3, 6, 0));
         buildUi();
     }
@@ -154,10 +167,20 @@ public class ResultsPanel extends JPanel {
         add(previewSplit, BorderLayout.CENTER);
     }
 
-    private JPanel createSectionPanel(String title, java.awt.Component content) {
+    private JPanel createSectionPanel(String title, Component content) {
         JPanel section = new JPanel(new BorderLayout());
         section.setBorder(new TitledBorder(title));
         section.add(content, BorderLayout.CENTER);
+        return section;
+    }
+
+    private JPanel createSectionPanelWithOpenButton(String title, Component content, Runnable onOpen) {
+        JPanel section = createSectionPanel(title, content);
+        JPanel tools = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 2));
+        JButton openButton = new JButton("Abrir en ventana");
+        openButton.addActionListener(event -> onOpen.run());
+        tools.add(openButton);
+        section.add(tools, BorderLayout.NORTH);
         return section;
     }
 
@@ -291,6 +314,112 @@ public class ResultsPanel extends JPanel {
         graphFrame.setSize(1100, 750);
         graphFrame.setLocationRelativeTo(this);
         graphFrame.setVisible(true);
+    }
+
+    private void openSymbolsInWindow() {
+        JFrame frame = new JFrame("Simbolos");
+        JTable table = new JTable(symbolsModel);
+        frame.add(new JScrollPane(table));
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.setSize(900, 550);
+        frame.setLocationRelativeTo(this);
+        frame.setVisible(true);
+    }
+
+    private void openErrorsInWindow() {
+        JFrame frame = new JFrame("Errores");
+        JTable table = new JTable(errorsModel);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.getSelectionModel().addListSelectionListener(event -> {
+            if (event.getValueIsAdjusting() || onErrorSelected == null) {
+                return;
+            }
+            int row = table.getSelectedRow();
+            if (row < 0) {
+                return;
+            }
+            Object lineObj = errorsModel.getValueAt(row, 1);
+            Object colObj = errorsModel.getValueAt(row, 2);
+            if (lineObj instanceof Integer line && colObj instanceof Integer col) {
+                onErrorSelected.accept(line, col);
+            }
+        });
+        frame.add(new JScrollPane(table));
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.setSize(900, 550);
+        frame.setLocationRelativeTo(this);
+        frame.setVisible(true);
+    }
+
+    private void openStackInWindow() {
+        JFrame frame = new JFrame("Pila ANTLR");
+        JPanel root = new JPanel(new BorderLayout());
+
+        JList<String> popupStackList = new JList<>();
+        JTextArea popupStackLog = new JTextArea();
+        popupStackLog.setEditable(false);
+        JLabel popupStackState = new JLabel("Paso: -/-", SwingConstants.LEFT);
+        JButton popupPrevButton = new JButton("Atras");
+        JButton popupNextButton = new JButton("Siguiente");
+
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        controls.add(popupPrevButton);
+        controls.add(popupNextButton);
+        controls.add(popupStackState);
+
+        JSplitPane split = new JSplitPane(
+                JSplitPane.VERTICAL_SPLIT,
+                new JScrollPane(popupStackList),
+                new JScrollPane(popupStackLog)
+        );
+        split.setResizeWeight(0.7);
+
+        int[] popupIndex = new int[] {snapshots.isEmpty() ? -1 : Math.max(0, snapshotIndex)};
+
+        Runnable refresh = () -> {
+            popupPrevButton.setEnabled(popupIndex[0] > 0);
+            popupNextButton.setEnabled(popupIndex[0] >= 0 && popupIndex[0] < snapshots.size() - 1);
+
+            if (popupIndex[0] < 0 || snapshots.isEmpty()) {
+                popupStackList.setListData(new String[] {});
+                popupStackLog.setText("Sin datos de pila.");
+                popupStackState.setText("Paso: -/-");
+                return;
+            }
+
+            ParseStackSnapshot snapshot = snapshots.get(popupIndex[0]);
+            popupStackList.setListData(snapshot.stack().toArray(String[]::new));
+
+            StringBuilder log = new StringBuilder();
+            log.append("Operacion: ").append(snapshot.operation()).append('\n');
+            log.append("Regla: ").append(snapshot.rule()).append('\n');
+            log.append("Profundidad: ").append(snapshot.stack().size()).append('\n');
+            popupStackLog.setText(log.toString());
+            popupStackState.setText("Paso: " + (popupIndex[0] + 1) + "/" + snapshots.size());
+        };
+
+        popupPrevButton.addActionListener(event -> {
+            if (popupIndex[0] > 0) {
+                popupIndex[0]--;
+                refresh.run();
+            }
+        });
+        popupNextButton.addActionListener(event -> {
+            if (popupIndex[0] >= 0 && popupIndex[0] < snapshots.size() - 1) {
+                popupIndex[0]++;
+                refresh.run();
+            }
+        });
+
+        refresh.run();
+
+        root.add(controls, BorderLayout.NORTH);
+        root.add(split, BorderLayout.CENTER);
+        frame.add(root);
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.setSize(900, 600);
+        frame.setLocationRelativeTo(this);
+        frame.setVisible(true);
     }
 
     private DefaultMutableTreeNode buildAstTree(AstNode node) {

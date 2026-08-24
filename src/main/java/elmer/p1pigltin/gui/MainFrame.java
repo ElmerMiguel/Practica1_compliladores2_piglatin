@@ -18,6 +18,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JToolBar;
 import javax.swing.SwingWorker;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.nio.file.Path;
 
 public class MainFrame extends JFrame {
@@ -43,6 +44,8 @@ public class MainFrame extends JFrame {
     private void configureUi() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1400, 850);
+        setMinimumSize(new Dimension(960, 540));
+        setResizable(true);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
