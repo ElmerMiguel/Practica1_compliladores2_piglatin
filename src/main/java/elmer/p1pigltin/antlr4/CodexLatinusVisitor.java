@@ -173,6 +173,12 @@ public interface CodexLatinusVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitStructVarDeclaration(CodexLatinusParser.StructVarDeclarationContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link CodexLatinusParser#blockEnd}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitBlockEnd(CodexLatinusParser.BlockEndContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link CodexLatinusParser#structLiteral}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

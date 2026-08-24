@@ -42,12 +42,12 @@ functionDefinition
 
 ratioFunction
     : KW_RATIO type IDENT LPAREN paramList? RPAREN
-      LBRACE localVarSection? statement* RBRACE FIN_BLOQUE SEMI
+            LBRACE localVarSection? statement* RBRACE blockEnd SEMI
     ;
 
 actioFunction
     : KW_ACTIO IDENT LPAREN paramList? RPAREN
-      LBRACE localVarSection? statement* RBRACE FIN_BLOQUE SEMI
+            LBRACE localVarSection? statement* RBRACE blockEnd SEMI
     ;
 
 paramList
@@ -124,7 +124,7 @@ exprList
    ============================================================ */
 
 structDefinition
-    : KW_STRUCTURA IDENT LBRACE structMember* RBRACE FIN_BLOQUE SEMI
+    : KW_STRUCTURA IDENT LBRACE structMember* RBRACE blockEnd SEMI
     ;
 
 // los atributos se separan con ';' o ',' (según el enunciado ambas son válidas)
@@ -147,7 +147,12 @@ memberType
 
 // declaración de variable de tipo estructura: esto x : Tipo { campo: valor, ... }  (SIN ';')
 structVarDeclaration
-    : KW_ESTO IDENT COLON IDENT structLiteral
+    : KW_ESTO IDENT COLON IDENT structLiteral SEMI?
+    ;
+
+blockEnd
+    : FIN_BLOQUE
+    | FIN_PROGRAMA
     ;
 
 structLiteral
@@ -183,7 +188,7 @@ statement
 // asignación con literal de estructura: termina en '}', SIN ';' (confirmado por el auxiliar)
 assignment
     : lvalue ASSIGN expr SEMI          # exprAssignment
-    | lvalue ASSIGN structLiteral      # structLiteralAssignment
+    | lvalue ASSIGN structLiteral SEMI?      # structLiteralAssignment
     ;
 
 lvalue
@@ -196,15 +201,15 @@ printStmt
 
 // la lectura NUNCA lleva ';'
 readStmt
-    : READ
-    | IDENT READ
+    : READ SEMI?
+    | IDENT READ SEMI?
     ;
 
 ifStmt
     : KW_SI LPAREN expr RPAREN LBRACE statement* RBRACE
       elseIfClause*
       elseClause?
-      FIN_BLOQUE SEMI
+            blockEnd SEMI
     ;
 
 elseIfClause
@@ -216,7 +221,7 @@ elseClause
     ;
 
 whileStmt
-    : KW_DUM LPAREN expr RPAREN LBRACE statement* RBRACE FIN_BLOQUE SEMI
+    : KW_DUM LPAREN expr RPAREN LBRACE statement* RBRACE blockEnd SEMI
     ;
 
 doWhileStmt

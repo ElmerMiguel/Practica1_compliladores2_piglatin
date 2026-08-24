@@ -278,6 +278,16 @@ public interface CodexLatinusListener extends ParseTreeListener {
 	 */
 	void exitStructVarDeclaration(CodexLatinusParser.StructVarDeclarationContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link CodexLatinusParser#blockEnd}.
+	 * @param ctx the parse tree
+	 */
+	void enterBlockEnd(CodexLatinusParser.BlockEndContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link CodexLatinusParser#blockEnd}.
+	 * @param ctx the parse tree
+	 */
+	void exitBlockEnd(CodexLatinusParser.BlockEndContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link CodexLatinusParser#structLiteral}.
 	 * @param ctx the parse tree
 	 */

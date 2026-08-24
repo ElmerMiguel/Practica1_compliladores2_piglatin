@@ -330,6 +330,18 @@ public class CodexLatinusBaseListener implements CodexLatinusListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterBlockEnd(CodexLatinusParser.BlockEndContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitBlockEnd(CodexLatinusParser.BlockEndContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterStructLiteral(CodexLatinusParser.StructLiteralContext ctx) { }
 	/**
 	 * {@inheritDoc}
