@@ -110,7 +110,15 @@ public class SemanticAnalyzer {
         if (node == null) return Type.VOID;
         return switch (node.tipo) {
             case PROGRAM, SECTION -> { node.children.forEach(this::verificar); yield Type.VOID; }
-            case BLOCK -> { node.children.forEach(this::verificar); yield Type.VOID; }
+            case BLOCK -> {
+                for (AstNode child : node.children) {
+                    if (!alcanzable) {
+                        error(child, "Codigo no alcanzable despues de una terminacion");
+                    }
+                    verificar(child);
+                }
+                yield Type.VOID;
+            }
             case VAR_DECL -> verificarDeclaracion(node);
             case ARRAY_DECL -> verificarArray(node);
             case STRUCT_DEF -> Type.VOID;
@@ -130,7 +138,14 @@ public class SemanticAnalyzer {
             case RETURN -> verificarRetorno(node);
             case BREAK -> { verificarInterrupcion(node, "interrumpe"); yield Type.VOID; }
             case CONTINUE -> { verificarInterrupcion(node, "perge"); yield Type.VOID; }
-            case INC_DEC -> { verificar(node.children.get(0)); yield Type.VOID; }
+            case INC_DEC -> {
+                Type operand = verificar(node.children.get(0));
+                if (operand != Type.NUMERUS && operand != Type.DECIMALIS) {
+                    error(node, "El operador " + node.attrs.get("operador")
+                            + " requiere NUMERUS o DECIMALIS");
+                }
+                yield Type.VOID;
+            }
             case FUNC_CALL -> verificarLlamada(node);
             default -> { node.children.forEach(this::verificar); yield Type.VOID; }
         };
@@ -186,6 +201,7 @@ public class SemanticAnalyzer {
     }
 
     private Type verificarLoop(AstNode node) {
+        boolean reachableBeforeLoop = alcanzable;
         boolean forLoop = node.tipo == AstNode.Tipo.FOR;
         if (forLoop) {
             tabla.enterScope("for");
@@ -211,6 +227,7 @@ public class SemanticAnalyzer {
         if (forLoop) {
             tabla.exitScope();
         }
+        alcanzable = reachableBeforeLoop;
         cicloDepth--;
         return Type.VOID;
     }
@@ -282,7 +299,14 @@ public class SemanticAnalyzer {
     private Type verificarArray(AstNode node) {
         Type elementType = Type.fromName((String) node.attrs.get("tipoElemento"));
         if (node.children.size() > 1) {
-            for (AstNode value : node.children.get(1).children) {
+            AstNode initializer = node.children.get(1);
+            Integer size = constantInteger(node.children.get(0));
+            if (size != null && initializer.children.size() > size) {
+                error(node, "El arreglo '" + node.attrs.get("nombre")
+                        + "' recibe " + initializer.children.size()
+                        + " elementos, pero su tamaño es " + size);
+            }
+            for (AstNode value : initializer.children) {
                 Type actual = verificar(value);
                 if (elementType != null && !elementType.accepts(actual)) {
                     error(value, "Elemento incompatible en arreglo '" + node.attrs.get("nombre") + "'");
@@ -331,12 +355,16 @@ public class SemanticAnalyzer {
         boolean currentIsArray = symbol.kind() == SymbolTable.Kind.ARRAY;
         for (AstNode step : node.children) {
             if (step.tipo == AstNode.Tipo.ACCESS_STEP_INDEX) {
+                Type indexType = verificar(step.children.get(0));
+                if (indexType != Type.NUMERUS) {
+                    error(step, "El indice de un arreglo debe ser NUMERUS");
+                }
                 Integer index = constantInteger(step.children.get(0));
-            if (index != null && currentIsArray && symbol.kind() == SymbolTable.Kind.ARRAY
-                && (index < 0 || index >= symbol.size())) {
+                if (index != null && currentIsArray && symbol.kind() == SymbolTable.Kind.ARRAY
+                        && (index < 0 || index >= symbol.size())) {
                     error(step, "Indice fuera de rango en '" + name + "': " + index);
                 }
-            currentIsArray = false;
+                currentIsArray = false;
                 currentPrimitive = Type.fromName(currentType);
             } else {
                 String fieldName = (String) step.attrs.get("nombreCampo");

@@ -31,9 +31,12 @@ public enum Type {
         if (operator.equals("&&") || operator.equals("||")) {
             return left == BOOL && right == BOOL ? BOOL : null;
         }
-        if (operator.equals("==") || operator.equals("!=") || operator.equals("<")
-                || operator.equals(">") || operator.equals("<=") || operator.equals(">=")) {
-            return BOOL;
+        if (operator.equals("==") || operator.equals("!=")) {
+            return left.accepts(right) || right.accepts(left) ? BOOL : null;
+        }
+        if (operator.equals("<") || operator.equals(">")
+                || operator.equals("<=") || operator.equals(">=")) {
+            return isNumeric(left) && isNumeric(right) ? BOOL : null;
         }
         if (left == TEXTUM || right == TEXTUM) {
             return operator.equals("+") ? TEXTUM : null;
@@ -43,6 +46,10 @@ public enum Type {
             return left.precedence >= right.precedence ? left : right;
         }
         return null;
+    }
+
+    private static boolean isNumeric(Type type) {
+        return type == NUMERUS || type == DECIMALIS || type == LITTERA;
     }
 
     public boolean accepts(Type actual) {

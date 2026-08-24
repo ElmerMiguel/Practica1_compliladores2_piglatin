@@ -244,7 +244,7 @@ public final class RegressionTest {
                 && output.contains("INISFay;")
                 && output.contains("%OINK_OINK ombrenay;")
                 && output.contains("%OINK \"Programa finalizado\" %OINK ombrenay;")
-                && output.contains("nterrumpeiay;")
+                && output.contains("interrumpeway;")
                 && output.contains("iway++) {")
                 && !output.contains("iway++;)")
                 && output.contains("edadway : umerusnay 20;")

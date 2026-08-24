@@ -19,7 +19,8 @@ public class PigLatinTranslator {
                     case STRUCT_VAR_DECL -> keyword("esto") + " "
                     + word(node, "nombre") + " : "
                     + word(node, "tipoDeclarado") + " "
-                        + traducir(node.children.get(0)) + ";";
+                        + traducir(node.children.get(0))
+                        + (Boolean.TRUE.equals(node.attrs.get("conPuntoYComa")) ? ";" : "");
                 case STRUCT_FIELD_INIT -> traducirStructContent(node);
                     case ASSIGN -> traducir(node.children.get(0)) + " = " + traducir(node.children.get(1))
                             + (Boolean.TRUE.equals(node.attrs.get("esActualizacion"))
@@ -43,7 +44,9 @@ public class PigLatinTranslator {
                     case CONTINUE -> keyword("perge") + ";";
             case BINARY_EXPR -> traducir(node.children.get(0)) + " "
                     + node.attrs.get("operador") + " " + traducir(node.children.get(1));
-                case UNARY_EXPR -> node.attrs.get("operador") + ("non".equals(node.attrs.get("operador")) ? " " : "")
+                case UNARY_EXPR -> ("non".equals(node.attrs.get("operador"))
+                        ? keyword("non") : node.attrs.get("operador"))
+                    + ("non".equals(node.attrs.get("operador")) ? " " : "")
                     + traducir(node.children.get(0));
                 case PAREN_EXPR -> "(" + traducir(node.children.get(0)) + ")";
             case LITERAL -> traducirLiteral(node);
@@ -51,7 +54,8 @@ public class PigLatinTranslator {
                 case PRINT -> "%OINK " + node.children.stream()
                     .map(this::traducir).collect(Collectors.joining(" %OINK ")) + ";";
                 case READ -> "%OINK_OINK" + (node.attrs.get("nombre") == null ? "" :
-                    " " + PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre"))) + ";";
+                    " " + PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")))
+                    + (Boolean.TRUE.equals(node.attrs.get("conPuntoYComa")) ? ";" : "");
             default -> throw new IllegalStateException("Nodo no soportado: " + node.tipo);
         };
     }
@@ -105,9 +109,10 @@ public class PigLatinTranslator {
         result.append('(').append(node.children.subList(0, params).stream()
             .map(this::traducir).collect(Collectors.joining(", "))).append(") {\n");
         for (int i = params; i < node.children.size(); i++) {
-            if (i == params) result.append(indentLines(traducir(node.children.get(i)), 1));
-            else result.append('\n').append(indentLines(traducir(node.children.get(i)), 1));
+            if (i > params) result.append('\n');
+            result.append(indentLines(traducir(node.children.get(i)), 1));
         }
+        if (node.children.size() > params) result.append('\n');
         return result.append("}\n").append(cierre(node)).append(';').toString();
     }
 
@@ -193,7 +198,6 @@ public class PigLatinTranslator {
         return switch (value) {
             case "print" -> "%OINK";
             case "read" -> "%OINK_OINK";
-            case "interrumpe" -> "nterrumpeiay";
             default -> PigLatinWordRules.toPigLatin(value);
         };
     }
