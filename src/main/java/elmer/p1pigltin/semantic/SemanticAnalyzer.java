@@ -27,6 +27,7 @@ public class SemanticAnalyzer {
         if (program == null) return;
         switch (program.tipo) {
             case PROGRAM -> program.children.forEach(this::declararSimbolos);
+            case SECTION -> program.children.forEach(this::declararSimbolos);
             case VAR_DECL -> declararVariable(program);
             case ARRAY_DECL -> declararArray(program);
             case STRUCT_DEF -> declararStruct(program);
@@ -108,7 +109,7 @@ public class SemanticAnalyzer {
     private Type verificar(AstNode node) {
         if (node == null) return Type.VOID;
         return switch (node.tipo) {
-            case PROGRAM -> { node.children.forEach(this::verificar); yield Type.VOID; }
+            case PROGRAM, SECTION -> { node.children.forEach(this::verificar); yield Type.VOID; }
             case BLOCK -> { node.children.forEach(this::verificar); yield Type.VOID; }
             case VAR_DECL -> verificarDeclaracion(node);
             case ARRAY_DECL -> verificarArray(node);
@@ -143,17 +144,17 @@ public class SemanticAnalyzer {
         alcanzable = true;
         tabla.enterScope((String) node.attrs.get("nombre"));
         int paramCount = (Integer) node.attrs.get("paramCount");
-        int localCount = (Integer) node.attrs.get("localCount");
         for (int i = 0; i < paramCount; i++) {
             AstNode param = node.children.get(i);
             Type type = Type.fromName((String) param.attrs.get("tipoDeclarado"));
             if (type != null) tabla.declarar((String) param.attrs.get("nombre"), type);
         }
-        for (int i = paramCount; i < paramCount + localCount; i++) {
-            AstNode local = node.children.get(i);
-            declararSimbolos(local);
+        int bodyStart = paramCount;
+        if (bodyStart < node.children.size() && node.children.get(bodyStart).tipo == AstNode.Tipo.SECTION) {
+            declararSimbolos(node.children.get(bodyStart));
+            bodyStart++;
         }
-        for (int i = paramCount + localCount; i < node.children.size(); i++) {
+        for (int i = bodyStart; i < node.children.size(); i++) {
             if (!alcanzable) {
                 error(node.children.get(i), "Codigo no alcanzable despues de una terminacion");
             }
@@ -173,7 +174,7 @@ public class SemanticAnalyzer {
         Type condition = verificar(node.children.get(0));
         if (condition != Type.BOOL) error(node, "Corrupcion de Flujo: la condicion debe ser BOOL");
         boolean before = alcanzable;
-        boolean allTerminate = true;
+        boolean allTerminate = node.children.size() > 2;
         for (int i = 1; i < node.children.size(); i++) {
             alcanzable = before;
             verificar(node.children.get(i));
@@ -184,7 +185,16 @@ public class SemanticAnalyzer {
     }
 
     private Type verificarLoop(AstNode node) {
-        if (node.tipo == AstNode.Tipo.FOR) {
+        boolean forLoop = node.tipo == AstNode.Tipo.FOR;
+        if (forLoop) {
+            tabla.enterScope("for");
+            AstNode initializer = node.children.get(0);
+            Type initializerType = Type.fromName((String) initializer.attrs.get("tipoDeclarado"));
+            if (initializerType != null) {
+                tabla.declarar((String) initializer.attrs.get("nombre"), initializerType);
+            }
+        }
+        if (forLoop) {
             verificar(node.children.get(0));
         }
         Type condition = verificar(node.tipo == AstNode.Tipo.DO_WHILE ? node.children.get(1)
@@ -196,6 +206,9 @@ public class SemanticAnalyzer {
             verificar(node.children.get(3));
         } else {
             verificar(node.children.get(0));
+        }
+        if (forLoop) {
+            tabla.exitScope();
         }
         cicloDepth--;
         return Type.VOID;
@@ -383,9 +396,24 @@ public class SemanticAnalyzer {
                 continue;
             }
             seen.put(name, true);
-            Type actual = verificar(field.children.get(0));
             Type expected = Type.fromName(definition.typeName());
-            if (expected != null && !expected.accepts(actual)) error(field, "Tipo incorrecto para atributo '" + name + "'");
+            AstNode value = field.children.get(0);
+            if (definition.array() && value.tipo == AstNode.Tipo.VAR_ACCESS
+                    && value.attrs.get("nombreBase").equals(definition.typeName())) {
+                continue;
+            }
+            if (expected != null) {
+                Type actual = verificar(value);
+                if (!expected.accepts(actual)) error(field, "Tipo incorrecto para atributo '" + name + "'");
+            } else {
+                SymbolTable.Symbol nested = tabla.resolver(definition.typeName());
+                if (nested == null || nested.kind() != SymbolTable.Kind.STRUCTURE
+                        || value.tipo != AstNode.Tipo.STRUCT_FIELD_INIT) {
+                    error(field, "Tipo incorrecto para atributo '" + name + "'");
+                } else {
+                    verificarStructFields(value, nested);
+                }
+            }
         }
         for (String name : structure.fields().keySet()) {
             if (!seen.containsKey(name)) error(literal, "Falta valor para atributo: " + name);

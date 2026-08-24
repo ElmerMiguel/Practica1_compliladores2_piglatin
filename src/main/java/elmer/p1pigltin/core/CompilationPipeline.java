@@ -24,7 +24,8 @@ public class CompilationPipeline {
 
         ParseStackRecorder stackRecorder = new ParseStackRecorder();
         parser.addParseListener(stackRecorder);
-        AstNode ast = new AstBuilder().visit(parser.program());
+        CodexLatinusParser.ProgramContext program = parser.program();
+        AstNode ast = reporter.tieneErrores() ? null : new AstBuilder().visit(program);
         SymbolTable tabla = new SymbolTable();
         String pigLatin = null;
 

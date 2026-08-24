@@ -17,10 +17,10 @@ globalSection
     ;
 
 globalDeclaration
-    : varDeclaration
-    | arrayDeclaration
+    : structVarDeclaration
     | structDefinition
-    | structVarDeclaration
+    | arrayDeclaration
+    | varDeclaration
     ;
 
 funcSection
@@ -63,10 +63,10 @@ localVarSection
     ;
 
 localDeclaration
-    : varDeclaration
-    | arrayDeclaration
+    : structVarDeclaration
     | structDefinition
-    | structVarDeclaration
+    | arrayDeclaration
+    | varDeclaration
     ;
 
 /* ============================================================
@@ -75,6 +75,8 @@ localDeclaration
 
 type
     : primitiveType
+    | VERUM
+    | FALSUS
     | IDENT                      // tipo de estructura definida por el usuario
     ;
 
@@ -92,7 +94,7 @@ primitiveType
 
 varDeclaration
     : KW_ESTO IDENT COLON (VERUM | FALSUS) SEMI                # boolShorthandDecl
-    | KW_ESTO IDENT COLON type expr? SEMI                      # typedVarDecl
+    | KW_ESTO IDENT COLON type (ASSIGN? expr)? SEMI            # typedVarDecl
     ;
 
 /* ============================================================
@@ -108,6 +110,8 @@ arrayDeclaration
 
 arrayType
     : primitiveType
+    | VERUM
+    | FALSUS
     | IDENT
     ;
 
@@ -160,7 +164,7 @@ structLiteral
     ;
 
 structFieldInit
-    : IDENT COLON expr
+    : IDENT COLON (expr | structLiteral)
     ;
 
 /* ============================================================

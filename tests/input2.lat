@@ -1,0 +1,16 @@
+VARIABILES>
+esto enteroBase : numerus 42;
+esto enteroCopia : numerus = 100;
+structura Soldado {
+    esto alias : textum;
+    esto vida : numerus;
+} finis;
+esto campeon : Soldado {
+    vida: 100,
+    alias: "Maximo"
+}
+MUNERA>
+MAIOR>
+campeon.vida = enteroCopia;
+>> campeon.alias;
+FINIS;

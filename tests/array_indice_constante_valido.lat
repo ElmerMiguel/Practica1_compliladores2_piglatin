@@ -1,0 +1,7 @@
+VARIABILES>
+series valores[3] : numerus {1, 2, 3};
+MUNERA>
+MAIOR>
+valores[1 + 1] = 8;
+>> valores[2];
+FINIS;

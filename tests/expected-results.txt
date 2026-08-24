@@ -1,0 +1,21 @@
+Resultados esperados de FixtureRunner
+=====================================
+
+input1.lat                       OK
+input2.lat                       OK (incluye `numerus = 100` e instancia de Soldado)
+declaracion_sin_igual.lat       OK (inicializadores con y sin '=')
+struct_campos_desordenados.lat  OK
+condicion_no_booleana.lat       ERROR SEMANTICA: la condicion debe ser BOOL
+array_fuera_rango.lat           ERROR SEMANTICA: Indice fuera de rango en 'valores': 5
+array_indice_constante_valido.lat OK
+inicializacion_incompleta.lat   ERROR SINTACTICA: falta una expresion despues de '='
+
+Inputs completos
+----------------
+docs/Prueba.lat                  OK
+docs/correcta1.txt              OK
+
+Validacion ejecutada
+--------------------
+Fixtures: 8/8 PASS
+RegressionTest: 18/18 PASS

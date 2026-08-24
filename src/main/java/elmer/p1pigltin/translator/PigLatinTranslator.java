@@ -7,75 +7,84 @@ import java.util.stream.Collectors;
 public class PigLatinTranslator {
     public String traducir(AstNode node) {
         return switch (node.tipo) {
-            case PROGRAM -> node.children.stream().map(this::traducir).collect(Collectors.joining("\n"));
+                case PROGRAM -> node.children.stream().map(this::traducir).collect(Collectors.joining("\n"))
+                    + "\n" + keyword((String) node.attrs.getOrDefault("terminador", "FINIS")) + ";";
+            case SECTION -> traducirSeccion(node);
             case BLOCK -> node.children.stream().map(this::traducir).collect(Collectors.joining("\n"));
             case VAR_DECL -> traducirDeclaracion(node);
                 case ARRAY_DECL -> traducirArray(node);
                 case STRUCT_DEF -> traducirStruct(node);
-                case STRUCT_MEMBER -> PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre"))
-                    + " : " + PigLatinWordRules.toPigLatin((String) node.attrs.get("tipoDeclarado"));
-                case STRUCT_VAR_DECL -> PigLatinWordRules.toPigLatin("esto") + " "
-                    + PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + " : "
-                    + PigLatinWordRules.toPigLatin((String) node.attrs.get("tipoDeclarado")) + " "
-                    + traducir(node.children.get(0));
+                case STRUCT_MEMBER -> keyword(Boolean.TRUE.equals(node.attrs.get("esArreglo")) ? "series" : "esto") + " "
+                    + word(node, "nombre") + " : " + word(node, "tipoDeclarado") + ";";
+                    case STRUCT_VAR_DECL -> keyword("esto") + " "
+                    + word(node, "nombre") + " : "
+                    + word(node, "tipoDeclarado") + " "
+                        + traducir(node.children.get(0)) + ";";
                 case STRUCT_FIELD_INIT -> traducirStructContent(node);
-                case ASSIGN -> traducir(node.children.get(0)) + " = " + traducir(node.children.get(1)) + ";";
+                    case ASSIGN -> traducir(node.children.get(0)) + " = " + traducir(node.children.get(1))
+                            + (Boolean.TRUE.equals(node.attrs.get("esActualizacion"))
+                            || Boolean.FALSE.equals(node.attrs.get("conPuntoYComa")) ? "" : ";");
                     case FUNC_DEF -> traducirFuncion(node);
-                    case PARAM -> PigLatinWordRules.toPigLatin("esto") + " "
-                        + PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + " : "
-                        + PigLatinWordRules.toPigLatin((String) node.attrs.get("tipoDeclarado"));
+                    case PARAM -> keyword("esto") + " " + word(node, "nombre") + " : "
+                        + word(node, "tipoDeclarado");
                     case IF -> traducirIf(node);
-                    case WHILE -> "dum (" + traducir(node.children.get(0)) + ") { "
-                        + traducir(node.children.get(1)) + " } finis;";
-                    case DO_WHILE -> "facere { " + traducir(node.children.get(0)) + " } dum ("
+                    case WHILE -> keyword("dum") + " (" + traducir(node.children.get(0)) + ") {\n"
+                                + indentLines(traducir(node.children.get(1)), 1) + "\n}\n" + cierre(node) + ";";
+                            case DO_WHILE -> keyword("facere") + " {\n" + indentLines(traducir(node.children.get(0)), 1) + "\n}\n" + keyword("dum") + " ("
                         + traducir(node.children.get(1)) + ");";
-                    case FOR -> "per (" + quitarPuntoYComa(traducir(node.children.get(0))) + "; "
-                        + traducir(node.children.get(1)) + "; " + traducir(node.children.get(2)) + ") { "
-                        + traducir(node.children.get(3)) + " }";
-                    case INC_DEC -> traducir(node.children.get(0)) + node.attrs.get("operador") + ";";
-                    case FUNC_CALL -> traducirLlamada(node);
-                    case RETURN -> "reddere " + traducir(node.children.get(0)) + ";";
-                    case BREAK -> "interrumpe;";
-                    case CONTINUE -> "perge;";
+                            case FOR -> keyword("per") + " (" + quitarPuntoYComa(traducir(node.children.get(0))) + "; "
+                                + traducir(node.children.get(1)) + "; " + quitarPuntoYComa(traducir(node.children.get(2))) + ") {\n"
+                                + indentLines(traducir(node.children.get(3)), 1) + "\n}";
+                            case INC_DEC -> traducir(node.children.get(0)) + node.attrs.get("operador")
+                                + (Boolean.TRUE.equals(node.attrs.get("sentencia")) ? ";" : "");
+                            case FUNC_CALL -> traducirLlamada(node) + (Boolean.TRUE.equals(node.attrs.get("sentencia")) ? ";" : "");
+                    case RETURN -> keyword("reddere") + " " + traducir(node.children.get(0)) + ";";
+                    case BREAK -> keyword("interrumpe") + ";";
+                    case CONTINUE -> keyword("perge") + ";";
             case BINARY_EXPR -> traducir(node.children.get(0)) + " "
                     + node.attrs.get("operador") + " " + traducir(node.children.get(1));
-            case UNARY_EXPR -> node.attrs.get("operador") + traducir(node.children.get(0));
+            case UNARY_EXPR -> keywordOrSymbol((String) node.attrs.get("operador")) + traducir(node.children.get(0));
             case LITERAL -> traducirLiteral(node);
             case VAR_ACCESS -> traducirAcceso(node);
-            case PRINT -> "%OINK " + node.children.stream()
-                    .map(this::traducir).collect(Collectors.joining(" %OINK ")) + ";";
-                case READ -> "%OINK_OINK";
+                case PRINT -> "%OINK " + node.children.stream()
+                    .map(this::traducir).collect(Collectors.joining(" ")) + ";";
+                case READ -> (node.attrs.get("nombre") == null ? "" :
+                    PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + " ")
+                    + "%OINK_OINK;";
             default -> throw new IllegalStateException("Nodo no soportado: " + node.tipo);
         };
     }
 
     private String traducirArray(AstNode node) {
-        String result = "series " + PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre"))
-                + "[" + traducir(node.children.get(0)) + "] : "
-                + PigLatinWordRules.toPigLatin((String) node.attrs.get("tipoElemento"));
+        String result = keyword("series") + " " + word(node, "nombre")
+                + "[" + traducir(node.children.get(0)) + "] :";
+        if (!Boolean.TRUE.equals(node.attrs.get("tipoInferido"))) {
+            result += " " + word(node, "tipoElemento");
+        }
         return node.children.size() > 1 ? result + " " + traducir(node.children.get(1)) + ";" : result + ";";
     }
 
     private String traducirStruct(AstNode node) {
-        return "structura " + PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + " { "
-                + node.children.stream().map(this::traducir).collect(Collectors.joining("; "))
-                + " } finis;";
+        return keyword("structura") + " " + word(node, "nombre") + " {\n"
+            + indentLines(node.children.stream().map(this::traducir).collect(Collectors.joining("\n")), 1)
+            + "\n}\n" + cierre(node) + ";";
     }
 
     private String traducirStructContent(AstNode node) {
         if (node.attrs.containsKey("nombreCampo")) {
-            return PigLatinWordRules.toPigLatin((String) node.attrs.get("nombreCampo")) + ": "
+            return word(node, "nombreCampo") + ": "
                     + traducir(node.children.get(0));
         }
-        return "{ " + node.children.stream().map(this::traducir).collect(Collectors.joining(", ")) + " }";
+        return "{\n" + indentLines(node.children.stream().map(this::traducir).collect(Collectors.joining(",\n")), 1)
+            + "\n}";
     }
 
     private String traducirAcceso(AstNode node) {
         StringBuilder result = new StringBuilder(
-                PigLatinWordRules.toPigLatin((String) node.attrs.get("nombreBase")));
+                word(node, "nombreBase"));
         for (AstNode step : node.children) {
             if (step.tipo == AstNode.Tipo.ACCESS_STEP_PROP) {
-                result.append('.').append(PigLatinWordRules.toPigLatin((String) step.attrs.get("nombreCampo")));
+                result.append('.').append(word(step, "nombreCampo"));
             } else {
                 result.append('[').append(traducir(step.children.get(0))).append(']');
             }
@@ -87,32 +96,37 @@ public class PigLatinTranslator {
         int params = (Integer) node.attrs.get("paramCount");
         StringBuilder result = new StringBuilder();
         if (Boolean.TRUE.equals(node.attrs.get("esActio"))) {
-            result.append("actio ").append(PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")));
+                result.append(keyword("actio")).append(' ').append(word(node, "nombre"));
         } else {
-            result.append("ratio ").append(PigLatinWordRules.toPigLatin((String) node.attrs.get("tipoRetorno")))
-                    .append(' ').append(PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")));
+                result.append(keyword("ratio")).append(' ').append(word(node, "tipoRetorno"))
+                    .append(' ').append(word(node, "nombre"));
         }
         result.append('(').append(node.children.subList(0, params).stream()
-                .map(this::traducir).collect(Collectors.joining(", "))).append(") { ");
-        for (int i = params; i < node.children.size(); i++) result.append(traducir(node.children.get(i))).append(' ');
-        return result.append("} finis;").toString();
+            .map(this::traducir).collect(Collectors.joining(", "))).append(") {\n");
+        for (int i = params; i < node.children.size(); i++) {
+            if (i == params) result.append(indentLines(traducir(node.children.get(i)), 1));
+            else result.append('\n').append(indentLines(traducir(node.children.get(i)), 1));
+        }
+        return result.append("}\n").append(cierre(node)).append(';').toString();
     }
 
     private String traducirIf(AstNode node) {
-        String result = "si (" + traducir(node.children.get(0)) + ") { " + traducir(node.children.get(1)) + " }";
+        String result = keyword("si") + " (" + traducir(node.children.get(0)) + ") {\n"
+            + indentLines(traducir(node.children.get(1)), 1) + "\n}";
         for (int i = 2; i < node.children.size(); i++) {
             AstNode branch = node.children.get(i);
             if (branch.tipo == AstNode.Tipo.IF) {
-                result += " aliter (" + traducir(branch.children.get(0)) + ") { " + traducir(branch.children.get(1)) + " }";
+                result += "\n" + keyword("aliter") + " (" + traducir(branch.children.get(0)) + ") {\n"
+                        + indentLines(traducir(branch.children.get(1)), 1) + "\n}";
             } else {
-                result += " aliter { " + traducir(branch) + " }";
+                result += "\n" + keyword("aliter") + " {\n" + indentLines(traducir(branch), 1) + "\n}";
             }
         }
-        return result + " finis;";
+        return result + "\n" + cierre(node) + ";";
     }
 
     private String traducirLlamada(AstNode node) {
-        return PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + "("
+        return word(node, "nombre") + "("
                 + node.children.stream().map(this::traducir).collect(Collectors.joining(", ")) + ")";
     }
 
@@ -122,25 +136,62 @@ public class PigLatinTranslator {
 
     private String traducirDeclaracion(AstNode node) {
         StringBuilder result = new StringBuilder()
-                .append(PigLatinWordRules.toPigLatin("esto")).append(' ')
-                .append(PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre"))).append(" : ")
-                .append(PigLatinWordRules.toPigLatin((String) node.attrs.get("tipoDeclarado")));
+                .append(keyword("esto")).append(' ')
+                .append(word(node, "nombre")).append(" : ")
+                .append(word(node, "tipoDeclarado"));
         if (!node.children.isEmpty()) {
             result.append(' ').append(traducir(node.children.get(0)));
         } else if (node.attrs.containsKey("valor")) {
-            result.append(' ').append(PigLatinWordRules.toPigLatin((String) node.attrs.get("valor")));
+            result.append(' ').append(traducirLiteral(node));
         }
         return result.append(';').toString();
     }
 
     private String traducirLiteral(AstNode node) {
         Object value = node.attrs.get("valor");
+        String raw = (String) node.attrs.get("raw");
+        if (raw != null && (raw.startsWith("\"") || raw.startsWith("'"))) return raw;
         return switch ((String) node.attrs.get("tipoLiteral")) {
-            case "TEXTUM" -> "\"" + value + "\"";
-            case "LITTERA" -> "'" + value.toString() + "'";
+            case "TEXTUM", "LITTERA" -> String.valueOf(value);
             case "BOOL" -> PigLatinWordRules.toPigLatin(value.toString());
             default -> value.toString();
         };
+    }
+
+    private String traducirSeccion(AstNode node) {
+        if ("corchetes".equals(node.attrs.get("delimitador"))) {
+            return PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + "[\n"
+                    + indentLines(node.children.stream().map(this::traducir).collect(Collectors.joining("\n")), 1)
+                    + "\n]";
+        }
+        return PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + ">\n"
+                + node.children.stream().map(this::traducir).collect(Collectors.joining("\n"));
+    }
+
+    private String cierre(AstNode node) {
+        return PigLatinWordRules.toPigLatin((String) node.attrs.getOrDefault("cierre", "finis"));
+    }
+
+    private String indentLines(String text, int depth) {
+        String prefix = "    ".repeat(depth);
+        return text.lines().map(line -> prefix + line).collect(Collectors.joining("\n"));
+    }
+
+    private String word(AstNode node, String attr) {
+        return PigLatinWordRules.toPigLatin((String) node.attrs.get(attr));
+    }
+
+    private String keyword(String value) {
+        return switch (value) {
+            case "print" -> "%OINK";
+            case "read" -> "%OINK_OINK";
+            case "interrumpe" -> "nterrumpeiay";
+            default -> PigLatinWordRules.toPigLatin(value);
+        };
+    }
+
+    private String keywordOrSymbol(String value) {
+        return "non".equals(value) ? keyword(value) + " " : value;
     }
 
     public static final class PigLatinWordRules {

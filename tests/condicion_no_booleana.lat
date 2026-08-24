@@ -1,0 +1,7 @@
+VARIABILES>
+MUNERA>
+MAIOR>
+si (5) {
+    >> "invalido";
+} finis;
+FINIS;

@@ -83,9 +83,9 @@ public class ResultsPanel extends JPanel {
         boolean valido = !result.errores().tieneErrores();
         loadErrors(result.errores().errores());
         loadAst(valido ? result.ast() : null);
-        loadSymbols(result.tabla());
+        loadSymbols(valido ? result.tabla() : null);
         loadStack(result.pila());
-        pigLatinArea.setText(result.pigLatin() == null ? "" : result.pigLatin());
+        pigLatinArea.setText(valido && result.pigLatin() != null ? result.pigLatin() : "");
     }
 
     public String currentPigLatin() {
@@ -212,7 +212,8 @@ public class ResultsPanel extends JPanel {
 
     private void loadSymbols(SymbolTable table) {
         symbolsModel.setRowCount(0);
-        for (Map.Entry<String, SymbolTable.Symbol> entry : table.simbolosGlobales().entrySet()) {
+        if (table == null) return;
+        for (Map.Entry<String, SymbolTable.Symbol> entry : table.todosLosSimbolos().entrySet()) {
             SymbolTable.Symbol symbol = entry.getValue();
             String type = symbol.declaredType() == null ? "-" : symbol.declaredType();
             String detail = buildDetail(symbol);

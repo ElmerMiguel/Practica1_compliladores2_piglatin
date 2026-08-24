@@ -10,20 +10,21 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     public AstNode visitProgram(CodexLatinusParser.ProgramContext ctx) {
         AstNode program = node(AstNode.Tipo.PROGRAM, ctx);
         if (ctx.globalSection() != null) {
-            program.children.addAll(visit(ctx.globalSection()).children);
+            program.child(visit(ctx.globalSection()));
         }
         if (ctx.funcSection() != null) {
-            program.children.addAll(visit(ctx.funcSection()).children);
+            program.child(visit(ctx.funcSection()));
         }
         if (ctx.mainSection() != null) {
-            program.children.addAll(visit(ctx.mainSection()).children);
+            program.child(visit(ctx.mainSection()));
         }
+        program.attr("terminador", ctx.FIN_PROGRAMA().getText());
         return program;
     }
 
     @Override
     public AstNode visitFuncSection(CodexLatinusParser.FuncSectionContext ctx) {
-        AstNode section = node(AstNode.Tipo.PROGRAM, ctx);
+        AstNode section = node(AstNode.Tipo.SECTION, ctx).attr("nombre", ctx.SEC_MUNERA().getText());
         for (CodexLatinusParser.FunctionDefinitionContext function : ctx.functionDefinition()) {
             section.child(visit(function));
         }
@@ -40,7 +41,8 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         AstNode function = node(AstNode.Tipo.FUNC_DEF, ctx)
                 .attr("nombre", ctx.IDENT().getText())
                 .attr("tipoRetorno", ctx.type().getText())
-                .attr("esActio", false);
+            .attr("esActio", false)
+            .attr("cierre", ctx.blockEnd().getText());
         addFunctionParts(function, ctx.paramList(), ctx.localVarSection(), ctx.statement());
         return function;
     }
@@ -50,7 +52,8 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         AstNode function = node(AstNode.Tipo.FUNC_DEF, ctx)
                 .attr("nombre", ctx.IDENT().getText())
                 .attr("tipoRetorno", "void")
-                .attr("esActio", true);
+            .attr("esActio", true)
+            .attr("cierre", ctx.blockEnd().getText());
         addFunctionParts(function, ctx.paramList(), ctx.localVarSection(), ctx.statement());
         return function;
     }
@@ -67,10 +70,8 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         }
         int localCount = 0;
         if (locals != null) {
-            for (CodexLatinusParser.LocalDeclarationContext declaration : locals.localDeclaration()) {
-                function.child(visit(declaration));
-                localCount++;
-            }
+            function.child(visit(locals));
+            localCount = locals.localDeclaration().size();
         }
         for (CodexLatinusParser.StatementContext statement : statements) {
             function.child(visit(statement));
@@ -93,7 +94,7 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         result.child(body);
         for (CodexLatinusParser.ElseIfClauseContext clause : ctx.elseIfClause()) result.child(visit(clause));
         if (ctx.elseClause() != null) result.child(visit(ctx.elseClause()));
-        return result;
+        return result.attr("cierre", ctx.blockEnd().getText());
     }
 
     @Override
@@ -116,7 +117,7 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         AstNode result = node(AstNode.Tipo.WHILE, ctx).child(visit(ctx.expr()));
         AstNode body = block(ctx);
         for (CodexLatinusParser.StatementContext statement : ctx.statement()) body.child(visit(statement));
-        return result.child(body);
+        return result.child(body).attr("cierre", ctx.blockEnd().getText());
     }
 
     @Override
@@ -124,7 +125,7 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         AstNode result = node(AstNode.Tipo.DO_WHILE, ctx);
         AstNode body = block(ctx);
         for (CodexLatinusParser.StatementContext statement : ctx.statement()) body.child(visit(statement));
-        return result.child(body).child(visit(ctx.expr()));
+        return result.child(body).child(visit(ctx.expr())).attr("cierre", "");
     }
 
     @Override
@@ -133,7 +134,7 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
                 .child(visit(ctx.forInit())).child(visit(ctx.expr())).child(visit(ctx.forUpdate()));
         AstNode body = block(ctx);
         for (CodexLatinusParser.StatementContext statement : ctx.statement()) body.child(visit(statement));
-        return result.child(body);
+        return result.child(body).attr("cierre", "");
     }
 
     @Override
@@ -146,18 +147,25 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
 
     @Override
     public AstNode visitForUpdate(CodexLatinusParser.ForUpdateContext ctx) {
+        if (ctx.ASSIGN() != null) {
+            return node(AstNode.Tipo.ASSIGN, ctx)
+                    .attr("esActualizacion", true)
+                    .child(visit(ctx.lvalue()))
+                    .child(visit(ctx.expr()));
+        }
         AstNode update = node(AstNode.Tipo.INC_DEC, ctx).attr("operador", ctx.getChild(1).getText());
-        return update.child(visit(ctx.lvalue() != null ? ctx.lvalue() : ctx.expr()));
+        return update.child(visit(ctx.lvalue()));
     }
 
     @Override
     public AstNode visitIncDecStmt(CodexLatinusParser.IncDecStmtContext ctx) {
-        return node(AstNode.Tipo.INC_DEC, ctx).attr("operador", ctx.getChild(1).getText()).child(visit(ctx.lvalue()));
+        return node(AstNode.Tipo.INC_DEC, ctx).attr("operador", ctx.getChild(1).getText())
+            .attr("sentencia", true).child(visit(ctx.lvalue()));
     }
 
     @Override
     public AstNode visitFunctionCallStmt(CodexLatinusParser.FunctionCallStmtContext ctx) {
-        return visit(ctx.functionCall());
+        return visit(ctx.functionCall()).attr("sentencia", true);
     }
 
     @Override
@@ -187,8 +195,19 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     }
 
     @Override
+    public AstNode visitLocalVarSection(CodexLatinusParser.LocalVarSectionContext ctx) {
+        AstNode section = node(AstNode.Tipo.SECTION, ctx)
+                .attr("nombre", ctx.SEC_VARIABILES().getText())
+                .attr("delimitador", "corchetes");
+        for (CodexLatinusParser.LocalDeclarationContext declaration : ctx.localDeclaration()) {
+            section.child(visit(declaration));
+        }
+        return section;
+    }
+
+    @Override
     public AstNode visitGlobalSection(CodexLatinusParser.GlobalSectionContext ctx) {
-        AstNode section = node(AstNode.Tipo.PROGRAM, ctx);
+        AstNode section = node(AstNode.Tipo.SECTION, ctx).attr("nombre", ctx.SEC_VARIABILES().getText());
         for (CodexLatinusParser.GlobalDeclarationContext declaration : ctx.globalDeclaration()) {
             section.child(visit(declaration));
         }
@@ -202,7 +221,7 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
 
     @Override
     public AstNode visitMainSection(CodexLatinusParser.MainSectionContext ctx) {
-        AstNode section = node(AstNode.Tipo.PROGRAM, ctx);
+        AstNode section = node(AstNode.Tipo.SECTION, ctx).attr("nombre", ctx.SEC_MAIOR().getText());
         for (CodexLatinusParser.VarDeclarationContext declaration : ctx.varDeclaration()) {
             section.child(visit(declaration));
         }
@@ -228,7 +247,7 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         String value = ctx.getChild(3).getText();
         return node(AstNode.Tipo.VAR_DECL, ctx)
                 .attr("nombre", ctx.IDENT().getText())
-                .attr("tipoDeclarado", "bool")
+                .attr("tipoDeclarado", value)
             .child(node(AstNode.Tipo.LITERAL, ctx)
                 .attr("valor", value)
                 .attr("tipoLiteral", "BOOL"));
@@ -250,7 +269,8 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     public AstNode visitBoolArrayDecl(CodexLatinusParser.BoolArrayDeclContext ctx) {
         AstNode array = node(AstNode.Tipo.ARRAY_DECL, ctx)
                 .attr("nombre", ctx.IDENT().getText())
-                .attr("tipoElemento", "bool");
+            .attr("tipoElemento", "bool")
+            .attr("tipoInferido", true);
         array.child(visit(ctx.expr())).child(visit(ctx.arrayInit()));
         return array;
     }
@@ -269,7 +289,8 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     @Override
     public AstNode visitStructDefinition(CodexLatinusParser.StructDefinitionContext ctx) {
         AstNode structure = node(AstNode.Tipo.STRUCT_DEF, ctx)
-                .attr("nombre", ctx.IDENT().getText());
+                .attr("nombre", ctx.IDENT().getText())
+                .attr("cierre", ctx.blockEnd().getText());
         for (CodexLatinusParser.StructMemberContext member : ctx.structMember()) {
             structure.child(visit(member));
         }
@@ -290,6 +311,8 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         return node(AstNode.Tipo.STRUCT_VAR_DECL, ctx)
                 .attr("nombre", ctx.IDENT(0).getText())
                 .attr("tipoDeclarado", ctx.IDENT(1).getText())
+                .attr("sentencia", true)
+                .attr("conPuntoYComa", ctx.getText().endsWith(";"))
                 .child(visit(ctx.structLiteral()));
     }
 
@@ -304,9 +327,14 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
 
     @Override
     public AstNode visitStructFieldInit(CodexLatinusParser.StructFieldInitContext ctx) {
-        return node(AstNode.Tipo.STRUCT_FIELD_INIT, ctx)
-                .attr("nombreCampo", ctx.IDENT().getText())
-                .child(visit(ctx.expr()));
+        AstNode field = node(AstNode.Tipo.STRUCT_FIELD_INIT, ctx)
+                .attr("nombreCampo", ctx.IDENT().getText());
+        if (ctx.expr() != null) {
+            field.child(visit(ctx.expr()));
+        } else {
+            field.child(visit(ctx.structLiteral()));
+        }
+        return field;
     }
 
     @Override
@@ -321,7 +349,8 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     @Override
     public AstNode visitReadStmt(CodexLatinusParser.ReadStmtContext ctx) {
         return node(AstNode.Tipo.READ, ctx)
-                .attr("nombre", ctx.IDENT() == null ? null : ctx.IDENT().getText());
+                .attr("nombre", ctx.IDENT() == null ? null : ctx.IDENT().getText())
+                .attr("conPuntoYComa", ctx.getText().endsWith(";"));
     }
 
     @Override
@@ -334,6 +363,7 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
     @Override
     public AstNode visitStructLiteralAssignment(CodexLatinusParser.StructLiteralAssignmentContext ctx) {
         return node(AstNode.Tipo.ASSIGN, ctx)
+                .attr("conPuntoYComa", ctx.getText().endsWith(";"))
                 .child(visit(ctx.lvalue()))
                 .child(visit(ctx.structLiteral()));
     }
@@ -457,7 +487,8 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         };
         return node(AstNode.Tipo.LITERAL, ctx)
                 .attr("valor", value)
-                .attr("tipoLiteral", literalType(token.getType()));
+            .attr("tipoLiteral", literalType(token.getType()))
+            .attr("raw", text);
     }
 
     private String literalType(int tokenType) {

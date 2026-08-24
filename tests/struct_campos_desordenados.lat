@@ -1,0 +1,13 @@
+VARIABILES>
+structura Persona {
+    esto nombre : textum;
+    esto edad : numerus;
+} finis;
+esto persona : Persona {
+    edad: 25,
+    nombre: "Ana"
+}
+MUNERA>
+MAIOR>
+>> persona.nombre;
+FINIS;

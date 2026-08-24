@@ -13,12 +13,12 @@ public enum Type {
         if (name == null) {
             return null;
         }
-        return switch (name.toLowerCase()) {
-            case "numerus" -> NUMERUS;
-            case "decimalis" -> DECIMALIS;
-            case "textum" -> TEXTUM;
-            case "littera" -> LITTERA;
-            case "bool", "verum", "falsus" -> BOOL;
+        return switch (name) {
+            case "numerus", "NUMERUS" -> NUMERUS;
+            case "decimalis", "DECIMALIS" -> DECIMALIS;
+            case "textum", "TEXTUM" -> TEXTUM;
+            case "littera", "LITTERA" -> LITTERA;
+            case "bool", "BOOL", "verum", "VERUM", "falsus", "FALSUS" -> BOOL;
             case "void" -> VOID;
             default -> null;
         };

@@ -1,0 +1,9 @@
+VARIABILES>
+esto edad : numerus 20;
+esto activo : bool verum;
+MUNERA>
+MAIOR>
+si (edad >= 18 && activo) {
+    >> "Mayor de edad";
+} finis;
+FINIS;

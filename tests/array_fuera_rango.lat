@@ -1,0 +1,6 @@
+VARIABILES>
+series valores[2] : numerus {1, 2};
+MUNERA>
+MAIOR>
+valores[5] = 1;
+FINIS;

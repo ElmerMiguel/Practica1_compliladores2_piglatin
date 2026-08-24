@@ -1,0 +1,7 @@
+VARIABILES>
+esto valor : numerus 2;
+esto copia : numerus = 3;
+MUNERA>
+MAIOR>
+copia = valor + 1;
+FINIS;

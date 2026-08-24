@@ -18,6 +18,7 @@ public final class RegressionTest {
     public static void main(String[] args) {
         validCases();
         invalidCases();
+        translationCases();
         System.out.println("\nResumen de regresion: " + passed + "/" + total + " PASS");
         if (!failures.isEmpty()) {
             System.out.println("Fallos:");
@@ -219,6 +220,36 @@ public final class RegressionTest {
                 """);
         checkInvalid("14 textum por numerus", "Operacion incompatible", program("esto x : textum \"hola\" * 2;"));
         checkInvalid("15 logico con numerus", "Corrupcion de Flujo", program("esto x : bool 1 && verum;"));
+    }
+
+    private static void translationCases() {
+        total++;
+        CompilationResult result = PIPELINE.compile("""
+                VARIABILES>
+                esto nombre : textum "Programa finalizado";
+                esto edad : numerus 20;
+                MUNERA>
+                MAIOR>
+                nombre <<;
+                >> "Programa finalizado" >> nombre;
+                per (esto i : numerus 0; i < 5; i++) {
+                    interrumpe;
+                }
+                FINIS;
+                """);
+        String output = result.pigLatin();
+        boolean ok = !result.errores().tieneErrores()
+                && output != null
+                && output.contains("UNERAMay>")
+                && output.contains("INISFay;")
+                && output.contains("ombrenay %OINK_OINK;")
+                && output.contains("%OINK \"Programa finalizado\" ombrenay;")
+                && output.contains("nterrumpeiay;")
+                && output.contains("iway++) {")
+                && !output.contains("iway++;)")
+                && output.contains("edadway : umerusnay 20;")
+                && !output.contains("rogramaPay inaladofay");
+        report("16 traduccion desde AST", ok, ok ? "" : errors(result) + " salida=" + output);
     }
 
     private static void checkValid(String name, String source) {

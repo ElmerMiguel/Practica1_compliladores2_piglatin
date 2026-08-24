@@ -37,7 +37,7 @@ public final class AstDotExporter {
         List<String> lines = new ArrayList<>();
         lines.add(node.tipo.name());
         switch (node.tipo) {
-            case VAR_DECL, ARRAY_DECL, STRUCT_DEF, STRUCT_VAR_DECL, FUNC_DEF, PARAM, FUNC_CALL -> {
+            case VAR_DECL, ARRAY_DECL, STRUCT_DEF, STRUCT_VAR_DECL, FUNC_DEF, PARAM, FUNC_CALL, SECTION -> {
                 add(lines, node.attrs, "nombre");
                 add(lines, node.attrs, "tipoDeclarado");
                 add(lines, node.attrs, "tipoRetorno");

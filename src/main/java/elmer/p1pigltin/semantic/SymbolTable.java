@@ -8,6 +8,7 @@ import java.util.Map;
 
 public class SymbolTable {
     private final Deque<Scope> scopes = new ArrayDeque<>();
+    private final Map<String, Symbol> allSymbols = new LinkedHashMap<>();
 
     public SymbolTable() {
         enterScope("global");
@@ -24,23 +25,20 @@ public class SymbolTable {
     }
 
     public boolean declarar(String name, Type type) {
-        return scopes.peek().symbols.putIfAbsent(name, Symbol.variable(name, type, scopes.peek().name)) == null;
+        return register(name, Symbol.variable(name, type, scopes.peek().name));
     }
 
     public boolean declararArray(String name, String elementType, int size) {
-        return scopes.peek().symbols.putIfAbsent(name,
-                Symbol.array(name, elementType, size, scopes.peek().name)) == null;
+        return register(name, Symbol.array(name, elementType, size, scopes.peek().name));
     }
 
     public boolean declararStructVariable(String name, String structType) {
-        return scopes.peek().symbols.putIfAbsent(name,
-                new Symbol(name, null, scopes.peek().name, Kind.STRUCT_VARIABLE,
-                    structType, null, -1, null, List.of())) == null;
+        return register(name, new Symbol(name, null, scopes.peek().name, Kind.STRUCT_VARIABLE,
+                structType, null, -1, null, List.of()));
     }
 
     public boolean declararStruct(String name, Map<String, Field> fields) {
-        return scopes.peek().symbols.putIfAbsent(name,
-                Symbol.structure(name, fields, scopes.peek().name)) == null;
+        return register(name, Symbol.structure(name, fields, scopes.peek().name));
     }
 
     public boolean declararFuncion(String name, Type returnType, boolean actio) {
@@ -48,8 +46,14 @@ public class SymbolTable {
     }
 
     public boolean declararFuncion(String name, Type returnType, boolean actio, List<Type> parameterTypes) {
-        return scopes.peek().symbols.putIfAbsent(name,
-                Symbol.function(name, returnType, scopes.peek().name, actio, parameterTypes)) == null;
+        return register(name, Symbol.function(name, returnType, scopes.peek().name, actio, parameterTypes));
+    }
+
+    private boolean register(String name, Symbol symbol) {
+        if (scopes.peek().symbols.containsKey(name)) return false;
+        scopes.peek().symbols.put(name, symbol);
+        allSymbols.put(symbol.scope() + ":" + name, symbol);
+        return true;
     }
 
     public Symbol resolver(String name) {
@@ -64,6 +68,10 @@ public class SymbolTable {
 
     public Map<String, Symbol> simbolosGlobales() {
         return Map.copyOf(scopes.getLast().symbols);
+    }
+
+    public Map<String, Symbol> todosLosSimbolos() {
+        return Map.copyOf(allSymbols);
     }
 
     public static final class Symbol {
