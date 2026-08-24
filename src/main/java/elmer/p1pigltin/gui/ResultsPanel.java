@@ -18,18 +18,19 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTree;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.GridLayout;
 import java.awt.Image;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -38,7 +39,12 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 public class ResultsPanel extends JPanel {
-    private final JTabbedPane tabs = new JTabbedPane();
+    private final JPanel outputPanel;
+    private final JPanel astPanel;
+    private final JPanel symbolsPanel;
+    private final JPanel stackPanel;
+    private final JPanel errorsPanel;
+    private final JPanel bottomRightPanel;
 
     private final DefaultTableModel errorsModel = new DefaultTableModel(
             new Object[] {"Fase", "Linea", "Columna", "Mensaje"}, 0) {
@@ -80,6 +86,12 @@ public class ResultsPanel extends JPanel {
 
     public ResultsPanel() {
         super(new BorderLayout());
+        outputPanel = createSectionPanel("2. Salida / Consola & Traduccion PigLatin", new RTextScrollPane(pigLatinArea));
+        astPanel = createSectionPanel("3. Arbol AST", buildAstTab());
+        symbolsPanel = createSectionPanel("4. Simbolos", new JScrollPane(symbolsTable));
+        stackPanel = createSectionPanel("5. Pila ANTLR", buildStackTab());
+        errorsPanel = createSectionPanel("6. Errores", new JScrollPane(errorsTable));
+        bottomRightPanel = new JPanel(new GridLayout(1, 3, 6, 0));
         buildUi();
     }
 
@@ -112,6 +124,18 @@ public class ResultsPanel extends JPanel {
         pigLatinArea.setText("");
     }
 
+    public JPanel outputPanel() {
+        return outputPanel;
+    }
+
+    public JPanel astPanel() {
+        return astPanel;
+    }
+
+    public JPanel bottomRightPanel() {
+        return bottomRightPanel;
+    }
+
     private void buildUi() {
         errorsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         errorsTable.getSelectionModel().addListSelectionListener(this::onErrorRowSelected);
@@ -120,13 +144,22 @@ public class ResultsPanel extends JPanel {
         PigLatinTokenMaker.register();
         pigLatinArea.setSyntaxEditingStyle(PigLatinTokenMaker.SYNTAX_STYLE_PIG_LATIN);
         MonokaiSyntaxTheme.apply(pigLatinArea);
-        tabs.addTab("Errores", new JScrollPane(errorsTable));
-        tabs.addTab("PigLatin", new RTextScrollPane(pigLatinArea));
-        tabs.addTab("AST", buildAstTab());
-        tabs.addTab("Simbolos", new JScrollPane(symbolsTable));
-        tabs.addTab("Pila", buildStackTab());
 
-        add(tabs, BorderLayout.CENTER);
+        bottomRightPanel.add(symbolsPanel);
+        bottomRightPanel.add(stackPanel);
+        bottomRightPanel.add(errorsPanel);
+
+        // Keep this panel self-contained for compatibility if added directly elsewhere.
+        JSplitPane previewSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, outputPanel, bottomRightPanel);
+        previewSplit.setResizeWeight(0.55);
+        add(previewSplit, BorderLayout.CENTER);
+    }
+
+    private JPanel createSectionPanel(String title, java.awt.Component content) {
+        JPanel section = new JPanel(new BorderLayout());
+        section.setBorder(new TitledBorder(title));
+        section.add(content, BorderLayout.CENTER);
+        return section;
     }
 
     private JPanel buildAstTab() {

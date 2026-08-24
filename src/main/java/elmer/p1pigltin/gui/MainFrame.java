@@ -49,14 +49,30 @@ public class MainFrame extends JFrame {
         setJMenuBar(buildMenuBar());
         add(buildToolBar(), BorderLayout.NORTH);
 
-        JSplitPane splitPane = new JSplitPane(
-                JSplitPane.HORIZONTAL_SPLIT,
-                editorPanel,
-                resultsPanel
+        JSplitPane leftColumn = new JSplitPane(
+            JSplitPane.VERTICAL_SPLIT,
+            editorPanel,
+            resultsPanel.astPanel()
         );
-        splitPane.setResizeWeight(0.5);
-        splitPane.setOneTouchExpandable(true);
-        add(splitPane, BorderLayout.CENTER);
+        leftColumn.setResizeWeight(0.58);
+        leftColumn.setOneTouchExpandable(true);
+
+        JSplitPane rightColumn = new JSplitPane(
+            JSplitPane.VERTICAL_SPLIT,
+            resultsPanel.outputPanel(),
+            resultsPanel.bottomRightPanel()
+        );
+        rightColumn.setResizeWeight(0.58);
+        rightColumn.setOneTouchExpandable(true);
+
+        JSplitPane mainSplit = new JSplitPane(
+            JSplitPane.HORIZONTAL_SPLIT,
+            leftColumn,
+            rightColumn
+        );
+        mainSplit.setResizeWeight(0.5);
+        mainSplit.setOneTouchExpandable(true);
+        add(mainSplit, BorderLayout.CENTER);
 
         JPanel footer = new JPanel(new BorderLayout());
         footer.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
