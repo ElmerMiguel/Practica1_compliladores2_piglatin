@@ -10,6 +10,7 @@ import elmer.p1pigltin.semantic.SymbolTable;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -27,6 +28,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.Image;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +50,10 @@ public class ResultsPanel extends JPanel {
     private final JTree astTree = new JTree(new DefaultMutableTreeNode("AST"));
     private final JLabel astGraphLabel = new JLabel("Sin grafica AST", JLabel.CENTER);
     private final JLabel astGraphStatus = new JLabel("DOT/PNG pendiente", SwingConstants.LEFT);
+    private final JScrollPane astGraphScroll = new JScrollPane(astGraphLabel);
+    private final JLabel astZoomLabel = new JLabel("100%");
+    private ImageIcon astGraphIcon;
+    private double astZoom = 1.0;
 
     private final DefaultTableModel symbolsModel = new DefaultTableModel(
             new Object[] {"Nombre", "Tipo", "Ambito", "Clase", "Detalle"}, 0) {
@@ -108,25 +114,40 @@ public class ResultsPanel extends JPanel {
         errorsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         errorsTable.getSelectionModel().addListSelectionListener(this::onErrorRowSelected);
 
+        pigLatinArea.setEditable(false);
         tabs.addTab("Errores", new JScrollPane(errorsTable));
+        tabs.addTab("PigLatin", new JScrollPane(pigLatinArea));
         tabs.addTab("AST", buildAstTab());
         tabs.addTab("Simbolos", new JScrollPane(symbolsTable));
         tabs.addTab("Pila", buildStackTab());
-
-        pigLatinArea.setEditable(false);
-        tabs.addTab("PigLatin", new JScrollPane(pigLatinArea));
 
         add(tabs, BorderLayout.CENTER);
     }
 
     private JPanel buildAstTab() {
         JPanel root = new JPanel(new BorderLayout());
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        JButton zoomOutButton = new JButton("- Zoom");
+        JButton zoomInButton = new JButton("+ Zoom");
+        JButton resetZoomButton = new JButton("Restablecer");
+        JButton openGraphButton = new JButton("Abrir en ventana");
+        zoomOutButton.addActionListener(event -> changeAstZoom(-0.1));
+        zoomInButton.addActionListener(event -> changeAstZoom(0.1));
+        resetZoomButton.addActionListener(event -> setAstZoom(1.0));
+        openGraphButton.addActionListener(event -> openGraphInWindow());
+        controls.add(zoomOutButton);
+        controls.add(zoomInButton);
+        controls.add(resetZoomButton);
+        controls.add(astZoomLabel);
+        controls.add(openGraphButton);
+
         JSplitPane split = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
                 new JScrollPane(astTree),
-                new JScrollPane(astGraphLabel)
+            astGraphScroll
         );
         split.setResizeWeight(0.35);
+        root.add(controls, BorderLayout.NORTH);
         root.add(split, BorderLayout.CENTER);
         root.add(astGraphStatus, BorderLayout.SOUTH);
         return root;
@@ -177,6 +198,9 @@ public class ResultsPanel extends JPanel {
         }
 
         if (root == null) {
+            astGraphIcon = null;
+            astZoom = 1.0;
+            astZoomLabel.setText("100%");
             astGraphLabel.setIcon(null);
             astGraphLabel.setText("Sin AST para graficar");
             astGraphStatus.setText("DOT/PNG pendiente");
@@ -190,7 +214,9 @@ public class ResultsPanel extends JPanel {
         String dot = AstDotExporter.exportar(root);
         Path output = Path.of("target", "gui", "ast-last.png");
         DotRenderer.renderizarPng(dot, output).ifPresentOrElse(path -> {
-                    astGraphLabel.setIcon(new ImageIcon(path.toAbsolutePath().toString()));
+                    astGraphIcon = new ImageIcon(path.toAbsolutePath().toString());
+                    astZoom = 1.0;
+                    updateAstGraphImage();
                     astGraphLabel.setText("");
                     astGraphStatus.setText("AST PNG: " + path.toAbsolutePath());
                 },
@@ -199,6 +225,41 @@ public class ResultsPanel extends JPanel {
                     astGraphLabel.setText("Graphviz (dot) no disponible");
                     astGraphStatus.setText("Se genero DOT, pero no se pudo renderizar PNG");
                 });
+    }
+
+    private void changeAstZoom(double delta) {
+        setAstZoom(astZoom + delta);
+    }
+
+    private void setAstZoom(double zoom) {
+        astZoom = Math.max(0.25, Math.min(4.0, zoom));
+        astZoomLabel.setText(Math.round(astZoom * 100) + "%");
+        updateAstGraphImage();
+    }
+
+    private void updateAstGraphImage() {
+        if (astGraphIcon == null) return;
+        int width = Math.max(1, (int) (astGraphIcon.getIconWidth() * astZoom));
+        int height = Math.max(1, (int) (astGraphIcon.getIconHeight() * astZoom));
+        Image scaled = astGraphIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+        astGraphLabel.setIcon(new ImageIcon(scaled));
+        astGraphLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        astGraphLabel.setVerticalAlignment(SwingConstants.TOP);
+        astGraphScroll.revalidate();
+    }
+
+    private void openGraphInWindow() {
+        if (astGraphIcon == null) return;
+        JFrame graphFrame = new JFrame("Grafica AST");
+        JLabel graphLabel = new JLabel(astGraphLabel.getIcon());
+        graphLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        graphLabel.setVerticalAlignment(SwingConstants.CENTER);
+        graphFrame.add(new JScrollPane(graphLabel));
+        graphFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        graphFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        graphFrame.setSize(1100, 750);
+        graphFrame.setLocationRelativeTo(this);
+        graphFrame.setVisible(true);
     }
 
     private DefaultMutableTreeNode buildAstTree(AstNode node) {
