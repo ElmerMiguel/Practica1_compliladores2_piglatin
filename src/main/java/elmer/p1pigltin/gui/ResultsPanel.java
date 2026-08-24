@@ -78,8 +78,10 @@ public class ResultsPanel extends JPanel {
     private final JLabel stackState = new JLabel("Paso: -/-", SwingConstants.LEFT);
     private final JButton prevButton = new JButton("Atras");
     private final JButton nextButton = new JButton("Siguiente");
+    private final JButton showAllButton = new JButton("Mostrar todo");
     private List<ParseStackSnapshot> snapshots = List.of();
     private int snapshotIndex = -1;
+    private boolean showingAllSnapshots;
 
     private final RSyntaxTextArea pigLatinArea = new RSyntaxTextArea(30, 80);
 
@@ -212,10 +214,15 @@ public class ResultsPanel extends JPanel {
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT));
         controls.add(prevButton);
         controls.add(nextButton);
+        controls.add(showAllButton);
         controls.add(stackState);
 
         prevButton.addActionListener(e -> moveSnapshot(-1));
         nextButton.addActionListener(e -> moveSnapshot(1));
+        showAllButton.addActionListener(e -> {
+            showingAllSnapshots = !showingAllSnapshots;
+            refreshStackView();
+        });
 
         stackLog.setEditable(false);
         JSplitPane split = new JSplitPane(
@@ -361,10 +368,12 @@ public class ResultsPanel extends JPanel {
         JLabel popupStackState = new JLabel("Paso: -/-", SwingConstants.LEFT);
         JButton popupPrevButton = new JButton("Atras");
         JButton popupNextButton = new JButton("Siguiente");
+        JButton popupShowAllButton = new JButton("Mostrar todo");
 
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT));
         controls.add(popupPrevButton);
         controls.add(popupNextButton);
+        controls.add(popupShowAllButton);
         controls.add(popupStackState);
 
         JSplitPane split = new JSplitPane(
@@ -375,15 +384,37 @@ public class ResultsPanel extends JPanel {
         split.setResizeWeight(0.7);
 
         int[] popupIndex = new int[] {snapshots.isEmpty() ? -1 : Math.max(0, snapshotIndex)};
+        boolean[] popupShowingAll = new boolean[] {false};
 
         Runnable refresh = () -> {
-            popupPrevButton.setEnabled(popupIndex[0] > 0);
-            popupNextButton.setEnabled(popupIndex[0] >= 0 && popupIndex[0] < snapshots.size() - 1);
+            popupPrevButton.setEnabled(!popupShowingAll[0] && popupIndex[0] > 0);
+            popupNextButton.setEnabled(!popupShowingAll[0]
+                    && popupIndex[0] >= 0 && popupIndex[0] < snapshots.size() - 1);
+            popupShowAllButton.setText(popupShowingAll[0] ? "Vista paso a paso" : "Mostrar todo");
 
             if (popupIndex[0] < 0 || snapshots.isEmpty()) {
                 popupStackList.setListData(new String[] {});
                 popupStackLog.setText("Sin datos de pila.");
                 popupStackState.setText("Paso: -/-");
+                return;
+            }
+
+            if (popupShowingAll[0]) {
+                List<String> allSteps = new ArrayList<>();
+                for (int index = 0; index < snapshots.size(); index++) {
+                    ParseStackSnapshot snapshot = snapshots.get(index);
+                    allSteps.add(String.format(
+                            "Paso %d/%d | %s %s | Pila: %s",
+                            index + 1,
+                            snapshots.size(),
+                            snapshot.operation(),
+                            snapshot.rule(),
+                            snapshot.stack()
+                    ));
+                }
+                popupStackList.setListData(allSteps.toArray(String[]::new));
+                popupStackLog.setText("Mostrando todos los pasos en orden. Total: " + snapshots.size());
+                popupStackState.setText("Todos los pasos (" + snapshots.size() + ")");
                 return;
             }
 
@@ -409,6 +440,10 @@ public class ResultsPanel extends JPanel {
                 popupIndex[0]++;
                 refresh.run();
             }
+        });
+        popupShowAllButton.addActionListener(event -> {
+            popupShowingAll[0] = !popupShowingAll[0];
+            refresh.run();
         });
 
         refresh.run();
@@ -461,6 +496,7 @@ public class ResultsPanel extends JPanel {
     private void loadStack(List<ParseStackSnapshot> snapshots) {
         this.snapshots = snapshots == null ? List.of() : new ArrayList<>(snapshots);
         this.snapshotIndex = this.snapshots.isEmpty() ? -1 : 0;
+        this.showingAllSnapshots = false;
         refreshStackView();
     }
 
@@ -477,13 +513,34 @@ public class ResultsPanel extends JPanel {
     }
 
     private void refreshStackView() {
-        prevButton.setEnabled(snapshotIndex > 0);
-        nextButton.setEnabled(snapshotIndex >= 0 && snapshotIndex < snapshots.size() - 1);
+        prevButton.setEnabled(!showingAllSnapshots && snapshotIndex > 0);
+        nextButton.setEnabled(!showingAllSnapshots
+                && snapshotIndex >= 0 && snapshotIndex < snapshots.size() - 1);
+        showAllButton.setText(showingAllSnapshots ? "Vista paso a paso" : "Mostrar todo");
 
         if (snapshotIndex < 0 || snapshots.isEmpty()) {
             stackList.setListData(new String[] {});
             stackLog.setText("Sin datos de pila.");
             stackState.setText("Paso: -/-");
+            return;
+        }
+
+        if (showingAllSnapshots) {
+            List<String> allSteps = new ArrayList<>();
+            for (int index = 0; index < snapshots.size(); index++) {
+                ParseStackSnapshot snapshot = snapshots.get(index);
+                allSteps.add(String.format(
+                        "Paso %d/%d | %s %s | Pila: %s",
+                        index + 1,
+                        snapshots.size(),
+                        snapshot.operation(),
+                        snapshot.rule(),
+                        snapshot.stack()
+                ));
+            }
+            stackList.setListData(allSteps.toArray(String[]::new));
+            stackLog.setText("Mostrando todos los pasos en orden. Total: " + snapshots.size());
+            stackState.setText("Todos los pasos (" + snapshots.size() + ")");
             return;
         }
 
