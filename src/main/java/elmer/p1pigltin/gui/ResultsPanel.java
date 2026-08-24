@@ -7,6 +7,8 @@ import elmer.p1pigltin.core.CompilerError;
 import elmer.p1pigltin.core.DotRenderer;
 import elmer.p1pigltin.core.ParseStackRecorder.ParseStackSnapshot;
 import elmer.p1pigltin.semantic.SymbolTable;
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+import org.fife.ui.rtextarea.RTextScrollPane;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -72,7 +74,7 @@ public class ResultsPanel extends JPanel {
     private List<ParseStackSnapshot> snapshots = List.of();
     private int snapshotIndex = -1;
 
-    private final JTextArea pigLatinArea = new JTextArea();
+    private final RSyntaxTextArea pigLatinArea = new RSyntaxTextArea(30, 80);
 
     private BiConsumer<Integer, Integer> onErrorSelected;
 
@@ -115,8 +117,11 @@ public class ResultsPanel extends JPanel {
         errorsTable.getSelectionModel().addListSelectionListener(this::onErrorRowSelected);
 
         pigLatinArea.setEditable(false);
+        PigLatinTokenMaker.register();
+        pigLatinArea.setSyntaxEditingStyle(PigLatinTokenMaker.SYNTAX_STYLE_PIG_LATIN);
+        MonokaiSyntaxTheme.apply(pigLatinArea);
         tabs.addTab("Errores", new JScrollPane(errorsTable));
-        tabs.addTab("PigLatin", new JScrollPane(pigLatinArea));
+        tabs.addTab("PigLatin", new RTextScrollPane(pigLatinArea));
         tabs.addTab("AST", buildAstTab());
         tabs.addTab("Simbolos", new JScrollPane(symbolsTable));
         tabs.addTab("Pila", buildStackTab());

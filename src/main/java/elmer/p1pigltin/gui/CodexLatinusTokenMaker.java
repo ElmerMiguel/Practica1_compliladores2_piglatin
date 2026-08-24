@@ -65,6 +65,9 @@ public class CodexLatinusTokenMaker extends AbstractTokenMaker {
         if (tokenType == CodexLatinusLexer.LITTERA_LIT) {
             return Token.LITERAL_CHAR;
         }
+        if (tokenType == CodexLatinusLexer.VERUM || tokenType == CodexLatinusLexer.FALSUS) {
+            return Token.RESERVED_WORD_2;
+        }
         if (tokenType == CodexLatinusLexer.LINE_COMMENT || tokenType == CodexLatinusLexer.BLOCK_COMMENT) {
             return Token.COMMENT_EOL;
         }
