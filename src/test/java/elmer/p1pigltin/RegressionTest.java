@@ -242,7 +242,7 @@ public final class RegressionTest {
                 && output != null
                 && output.contains("UNERAMay>")
                 && output.contains("INISFay;")
-                && output.contains("ombrenay %OINK_OINK;")
+                && output.contains("%OINK_OINK ombrenay;")
                 && output.contains("%OINK \"Programa finalizado\" %OINK ombrenay;")
                 && output.contains("nterrumpeiay;")
                 && output.contains("iway++) {")

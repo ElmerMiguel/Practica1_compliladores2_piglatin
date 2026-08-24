@@ -50,9 +50,8 @@ public class PigLatinTranslator {
             case VAR_ACCESS -> traducirAcceso(node);
                 case PRINT -> "%OINK " + node.children.stream()
                     .map(this::traducir).collect(Collectors.joining(" %OINK ")) + ";";
-                case READ -> (node.attrs.get("nombre") == null ? "" :
-                    PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + " ")
-                    + "%OINK_OINK;";
+                case READ -> "%OINK_OINK" + (node.attrs.get("nombre") == null ? "" :
+                    " " + PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre"))) + ";";
             default -> throw new IllegalStateException("Nodo no soportado: " + node.tipo);
         };
     }

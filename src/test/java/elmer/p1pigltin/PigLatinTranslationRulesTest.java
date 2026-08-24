@@ -34,7 +34,7 @@ public final class PigLatinTranslationRulesTest {
         }
         String output = result.pigLatin();
         require(output, "%OINK xay %OINK yay;", "print conserva cada operador >>");
-        require(output, "xay %OINK_OINK;", "read usa %OINK_OINK");
+        require(output, "%OINK_OINK xay;", "read usa %OINK_OINK como prefijo");
         require(output, "((xay < yay && non activoway) || xay == yay)",
                 "operadores y parentesis se conservan");
         require(output, "umarsay(xay, yay)", "nombre de funcion y argumentos se recorren");
