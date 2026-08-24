@@ -149,7 +149,6 @@ public class ResultsPanel extends JPanel {
         bottomRightPanel.add(stackPanel);
         bottomRightPanel.add(errorsPanel);
 
-        // Keep this panel self-contained for compatibility if added directly elsewhere.
         JSplitPane previewSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, outputPanel, bottomRightPanel);
         previewSplit.setResizeWeight(0.55);
         add(previewSplit, BorderLayout.CENTER);
@@ -179,14 +178,8 @@ public class ResultsPanel extends JPanel {
         controls.add(astZoomLabel);
         controls.add(openGraphButton);
 
-        JSplitPane split = new JSplitPane(
-                JSplitPane.HORIZONTAL_SPLIT,
-                new JScrollPane(astTree),
-            astGraphScroll
-        );
-        split.setResizeWeight(0.35);
         root.add(controls, BorderLayout.NORTH);
-        root.add(split, BorderLayout.CENTER);
+        root.add(astGraphScroll, BorderLayout.CENTER);
         root.add(astGraphStatus, BorderLayout.SOUTH);
         return root;
     }
