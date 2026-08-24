@@ -120,6 +120,7 @@ public class SemanticAnalyzer {
             case ASSIGN -> verificarAsignacion(node);
             case BINARY_EXPR -> verificarBinaria(node);
             case UNARY_EXPR -> verificarUnaria(node);
+            case PAREN_EXPR -> verificar(node.children.get(0));
             case LITERAL -> Type.fromName((String) node.attrs.get("tipoLiteral"));
             case VAR_ACCESS -> verificarAcceso(node);
             case PRINT -> { node.children.forEach(this::verificar); yield Type.VOID; }

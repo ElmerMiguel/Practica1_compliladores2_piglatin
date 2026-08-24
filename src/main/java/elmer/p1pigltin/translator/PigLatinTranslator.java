@@ -43,11 +43,13 @@ public class PigLatinTranslator {
                     case CONTINUE -> keyword("perge") + ";";
             case BINARY_EXPR -> traducir(node.children.get(0)) + " "
                     + node.attrs.get("operador") + " " + traducir(node.children.get(1));
-            case UNARY_EXPR -> keywordOrSymbol((String) node.attrs.get("operador")) + traducir(node.children.get(0));
+                case UNARY_EXPR -> node.attrs.get("operador") + ("non".equals(node.attrs.get("operador")) ? " " : "")
+                    + traducir(node.children.get(0));
+                case PAREN_EXPR -> "(" + traducir(node.children.get(0)) + ")";
             case LITERAL -> traducirLiteral(node);
             case VAR_ACCESS -> traducirAcceso(node);
                 case PRINT -> "%OINK " + node.children.stream()
-                    .map(this::traducir).collect(Collectors.joining(" ")) + ";";
+                    .map(this::traducir).collect(Collectors.joining(" %OINK ")) + ";";
                 case READ -> (node.attrs.get("nombre") == null ? "" :
                     PigLatinWordRules.toPigLatin((String) node.attrs.get("nombre")) + " ")
                     + "%OINK_OINK;";
@@ -139,12 +141,19 @@ public class PigLatinTranslator {
                 .append(keyword("esto")).append(' ')
                 .append(word(node, "nombre")).append(" : ")
                 .append(word(node, "tipoDeclarado"));
-        if (!node.children.isEmpty()) {
+        if (!node.children.isEmpty() && !esBooleanoCorto(node)) {
             result.append(' ').append(traducir(node.children.get(0)));
         } else if (node.attrs.containsKey("valor")) {
             result.append(' ').append(traducirLiteral(node));
         }
         return result.append(';').toString();
+    }
+
+    private boolean esBooleanoCorto(AstNode node) {
+        return ("verum".equals(node.attrs.get("tipoDeclarado"))
+                || "falsus".equals(node.attrs.get("tipoDeclarado")))
+                && node.children.size() == 1
+                && node.children.get(0).tipo == AstNode.Tipo.LITERAL;
     }
 
     private String traducirLiteral(AstNode node) {
@@ -188,10 +197,6 @@ public class PigLatinTranslator {
             case "interrumpe" -> "nterrumpeiay";
             default -> PigLatinWordRules.toPigLatin(value);
         };
-    }
-
-    private String keywordOrSymbol(String value) {
-        return "non".equals(value) ? keyword(value) + " " : value;
     }
 
     public static final class PigLatinWordRules {

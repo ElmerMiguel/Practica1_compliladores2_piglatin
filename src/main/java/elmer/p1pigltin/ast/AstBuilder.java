@@ -474,7 +474,7 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
             return node(AstNode.Tipo.VAR_ACCESS, ctx).attr("nombreBase", ctx.IDENT().getText());
         }
         if (ctx.expr() != null) {
-            return visit(ctx.expr());
+            return node(AstNode.Tipo.PAREN_EXPR, ctx).child(visit(ctx.expr()));
         }
         Token token = ctx.getStart();
         String text = token.getText();
