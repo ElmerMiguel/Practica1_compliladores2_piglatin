@@ -4,11 +4,12 @@ grammar CodexLatinus;
 package elmer.p1pigltin.antlr4;
 }
 
-/* ============================================================
+/* 
    PROGRAMA
-   ============================================================ */
+    */
 
 program
+    //  permite secciones opcionales, pero main y finis son obligatorios
     : globalSection? funcSection? mainSection FIN_PROGRAMA SEMI EOF
     ;
 
@@ -31,9 +32,9 @@ mainSection
     : SEC_MAIOR GT (varDeclaration | statement)*
     ;
 
-/* ============================================================
+/* 
    FUNCIONES
-   ============================================================ */
+    */
 
 functionDefinition
     : ratioFunction
@@ -69,9 +70,9 @@ localDeclaration
     | varDeclaration
     ;
 
-/* ============================================================
+/* 
    TIPOS
-   ============================================================ */
+    */
 
 type
     : primitiveType
@@ -88,23 +89,27 @@ primitiveType
     | KW_BOOL
     ;
 
-/* ============================================================
+/* 
    DECLARACION DE VARIABLES
-   ============================================================ */
+    */
 
 varDeclaration
+    // forma corta bool: se toma tipo desde verum/falsus
     : KW_ESTO IDENT COLON (VERUM | FALSUS) SEMI                # boolShorthandDecl
+    // forma tipada: acepta inicializacion directa o por inferencia con expr
     | KW_ESTO IDENT COLON type (ASSIGN? expr)? SEMI            # typedVarDecl
     ;
 
-/* ============================================================
+/* 
    ARREGLOS (series)
-   ============================================================ */
+    */
 
 // forma tipada normal: series id[tam] : tipo {...}? ;
 // forma especial booleana (sin tipo, se infiere por verum/falsus): series id[tam] : {verum, falsus} ;
 arrayDeclaration
+    // forma normal tipada
     : KW_SERIES IDENT LBRACK expr RBRACK COLON arrayType arrayInit? SEMI   # typedArrayDecl
+    // forma especial booleana sin tipo explicito
     | KW_SERIES IDENT LBRACK expr RBRACK COLON arrayInit SEMI              # boolArrayDecl
     ;
 
@@ -123,15 +128,15 @@ exprList
     : expr (COMMA expr)*
     ;
 
-/* ============================================================
+/* 
    ESTRUCTURAS (structura)
-   ============================================================ */
+    */
 
 structDefinition
     : KW_STRUCTURA IDENT LBRACE structMember* RBRACE blockEnd SEMI
     ;
 
-// los atributos se separan con ';' o ',' (según el enunciado ambas son válidas)
+// los atributos se separan con ';' o ',' 
 structMember
     : KW_ESTO IDENT COLON memberType structMemberSep?
     | KW_SERIES IDENT COLON memberType structMemberSep?    // arreglo dentro de struct: sin tamaño
@@ -167,11 +172,10 @@ structFieldInit
     : IDENT COLON (expr | structLiteral)
     ;
 
-/* ============================================================
+/* 
    SENTENCIAS (solo dentro de MAIOR, si/dum/per/facere, cuerpos de función)
-   NOTA: las declaraciones de variables/arreglos/estructuras NO son
-   sentencias válidas aquí: solo pueden aparecer en VARIABILES> o VARIABILES[].
-   ============================================================ */
+
+    */
 
 statement
     : assignment
@@ -188,10 +192,12 @@ statement
     | continueStmt
     ;
 
-// asignación normal: termina en ';'
-// asignación con literal de estructura: termina en '}', SIN ';' (confirmado por el auxiliar)
+// asignacion normal: termina en ';'
+// asignacion con literal de estructura: termina en '}', SIN ';'
 assignment
+    // asignacion comun con ;
     : lvalue ASSIGN expr SEMI          # exprAssignment
+    // para struct literal se acepta cierre en } y ; opcional
     | lvalue ASSIGN structLiteral SEMI?      # structLiteralAssignment
     ;
 
@@ -203,7 +209,7 @@ printStmt
     : PRINT expr (PRINT expr)* SEMI
     ;
 
-// la lectura NUNCA lleva ';'
+// la lectura nunca lleva ';'
 readStmt
     : READ SEMI?
     | IDENT READ SEMI?
@@ -232,8 +238,7 @@ doWhileStmt
     : KW_FACERE LBRACE statement* RBRACE KW_DUM LPAREN expr RPAREN SEMI
     ;
 
-// OJO: en el ejemplo del enunciado 'per' cierra solo con '}', sin 'finis;'.
-// Verificar con el profesor; si confirma que sí lleva, agregar 'FIN_BLOQUE SEMI' al final.
+//'per' cierra solo con '}', sin 'finis;'.
 forStmt
     : KW_PER LPAREN forInit SEMI expr SEMI forUpdate RPAREN LBRACE statement* RBRACE
     ;
@@ -275,9 +280,9 @@ continueStmt
     : KW_PERGE SEMI
     ;
 
-/* ============================================================
-   EXPRESIONES (recursión izquierda permitida solo aquí)
-   ============================================================ */
+/* 
+   EXPRESIONES (recursión izquierda solo aki)
+    */
 
 expr
     : logicalOrExpr
@@ -318,8 +323,9 @@ unaryExpr
     | postfixExpr
     ;
 
-// encadenamiento: variable.propiedad, variable[i], variable.array[i].sub.propiedad, ++/--
+// encadenamiento, variable.propiedad, variable[i], variable.array[i].sub.propiedad, ++/--
 postfixExpr
+    // model accesos encadenados y dja ++/-- al final
     : atom (DOT IDENT | LBRACK expr RBRACK)* (INC | DEC)?
     ;
 
@@ -335,16 +341,16 @@ atom
     | LPAREN expr RPAREN
     ;
 
-/* ============================================================
+/* 
    LEXER
-   ============================================================ */
+    */
 
 // --- marcadores de sección / fin de programa ---
 SEC_VARIABILES : 'VARIABILES' ;
 SEC_MUNERA     : 'MUNERA' ;
 SEC_MAIOR      : 'MAIOR' ;
-FIN_PROGRAMA   : 'FINIS' ;   // mayúscula: cierra todo el programa
-FIN_BLOQUE     : 'finis' ;   // minúscula: cierra structura/funcion/si/dum
+FIN_PROGRAMA   : 'FINIS' ;   // M cierra todo el programa
+FIN_BLOQUE     : 'finis' ;   // m cierra structura/funcion/si/dum
 
 // --- palabras reservadas ---
 KW_ESTO        : 'esto' ;
@@ -373,7 +379,7 @@ KW_BOOL        : 'bool' ;
 VERUM          : 'verum' ;
 FALSUS         : 'falsus' ;
 
-// --- operadores de dos caracteres (deben ir antes que los de uno) ---
+// --- operadores de dos caracteres  ---
 EQ             : '==' ;
 NEQ            : '!=' ;
 LE             : '<=' ;
@@ -423,8 +429,9 @@ LITTERA_LIT
     : '\'' (~['\\\r\n] | '\\' .) '\''
     ;
 
-// --- identificadores (van después de todas las palabras reservadas) ---
+// --- identificadores ---
 IDENT
+    // fianl
     : [a-zA-Z_] [a-zA-Z_0-9]*
     ;
 

@@ -6,6 +6,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * tabs de simbls con stack de ambitos para resolv nombrs por cercania.
+ */
 public class SymbolTable {
     private final Deque<Scope> scopes = new ArrayDeque<>();
     private final Map<String, Symbol> allSymbols = new LinkedHashMap<>();
@@ -56,6 +59,9 @@ public class SymbolTable {
         return true;
     }
 
+    /**
+     * busca desde el scope actual hacia afuera.
+     */
     public Symbol resolver(String name) {
         for (Scope scope : scopes) {
             Symbol symbol = scope.symbols.get(name);

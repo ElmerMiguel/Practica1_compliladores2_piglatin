@@ -10,6 +10,9 @@ import java.util.Optional;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * analz semantic 2etap declarar y  validar tipos/flujo.
+ */
 public class SemanticAnalyzer {
     private final SymbolTable tabla;
     private final ErrorReporter errores;
@@ -23,6 +26,9 @@ public class SemanticAnalyzer {
         this.errores = errores;
     }
 
+    /**
+     * primera pasada reg nmbrs y firmas antes de validar usos.
+     */
     public void declararSimbolos(AstNode program) {
         if (program == null) return;
         switch (program.tipo) {
@@ -49,6 +55,9 @@ public class SemanticAnalyzer {
                 Boolean.TRUE.equals(node.attrs.get("esActio")), parameterTypes), "Funcion ya declarada");
     }
 
+    /**
+     * 2d pasada vald tipos, accesos, retornos y ctrl de flujo.
+     */
     public void verificarTipos(AstNode program) {
         verificar(program);
     }
@@ -151,6 +160,9 @@ public class SemanticAnalyzer {
         };
     }
 
+    /**
+     * mnja scope de parametros/locales exig retorno total en ratio.
+     */
     private Type verificarFuncion(AstNode node) {
         Type previousReturn = retornoActual;
         boolean previousActio = funcionActio;
@@ -186,6 +198,9 @@ public class SemanticAnalyzer {
         return Type.VOID;
     }
 
+    /**
+     * combin alcanzblidd de ramas para detectar codigo muerto real.
+     */
     private Type verificarIf(AstNode node) {
         Type condition = verificar(node.children.get(0));
         if (condition != Type.BOOL) error(node, "Corrupcion de Flujo: la condicion debe ser BOOL");
@@ -343,6 +358,9 @@ public class SemanticAnalyzer {
         return result;
     }
 
+    /**
+     * resuelve cadenas tipo a.b[i].c y valida indice/rango cuando aplica.
+     */
     private Type verificarAcceso(AstNode node) {
         String name = (String) node.attrs.get("nombreBase");
         SymbolTable.Symbol symbol = tabla.resolver(name);
@@ -415,6 +433,9 @@ public class SemanticAnalyzer {
         return currentType;
     }
 
+    /**
+     * cpara literal de struct contra definicion: campos, tipos y faltantes.
+     */
     private void verificarStructFields(AstNode literal, SymbolTable.Symbol structure) {
         Map<String, Boolean> seen = new LinkedHashMap<>();
         for (AstNode field : literal.children) {

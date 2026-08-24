@@ -12,6 +12,9 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 
+/**
+ * pila parser vista pso pso
+ */
 public class ParseStackRecorder implements ParseTreeListener {
     private final Deque<String> stack = new ArrayDeque<>();
     private final List<ParseStackSnapshot> snapshots = new ArrayList<>();
@@ -35,14 +38,15 @@ public class ParseStackRecorder implements ParseTreeListener {
 
     @Override
     public void visitTerminal(TerminalNode node) {
-        // La pila solicitada representa reglas del parser, no tokens individuales.
+      
     }
 
     @Override
     public void visitErrorNode(ErrorNode node) {
-        // Los errores sintacticos ya se registran mediante CodexErrorListener.
+        
     }
 
+  
     public List<ParseStackSnapshot> snapshots() {
         return Collections.unmodifiableList(new ArrayList<>(snapshots));
     }
@@ -55,6 +59,9 @@ public class ParseStackRecorder implements ParseTreeListener {
         return context.getClass().getSimpleName().replace("Context", "");
     }
 
+    /**
+     * estado  de la pila desps de cda evento (shift/reduce/accept).
+     */
     public static final class ParseStackSnapshot {
         private final String operation;
         private final String rule;

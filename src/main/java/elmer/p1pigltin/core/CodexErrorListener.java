@@ -4,6 +4,9 @@ import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 
+/**
+ * adapta errores de antlr al formato de errores del proyecto.
+ */
 public class CodexErrorListener extends BaseErrorListener {
     private final ErrorReporter reporter;
     private final CompilerError.Fase fase;
@@ -13,6 +16,9 @@ public class CodexErrorListener extends BaseErrorListener {
         this.fase = fase;
     }
 
+    /**
+     *  rptre deerrores de reconocimiento antlr
+     */
     @Override
     public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
                             int line, int charPositionInLine, String message,

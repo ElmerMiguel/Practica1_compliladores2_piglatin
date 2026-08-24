@@ -1,5 +1,8 @@
 package elmer.p1pigltin.semantic;
 
+/**
+ * tipos primitivos y su jerarq de promocion implicita.
+ */
 public enum Type {
     NUMERUS(3), DECIMALIS(4), TEXTUM(5), LITTERA(2), BOOL(1), VOID(0);
 
@@ -24,6 +27,9 @@ public enum Type {
         };
     }
 
+    /**
+     * calc tipo result de una opcion binaria.
+     */
     public static Type resultOf(Type left, Type right, String operator) {
         if (left == null || right == null || left == VOID || right == VOID) {
             return null;

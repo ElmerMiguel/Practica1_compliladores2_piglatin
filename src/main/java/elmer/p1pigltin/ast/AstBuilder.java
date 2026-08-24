@@ -5,7 +5,15 @@ import elmer.p1pigltin.antlr4.CodexLatinusParser;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 
+/**
+ * convierte el parse tree de antlr en un ast propio.
+ *
+ * ste visitor no valida tps, solo guarda la forma del prgm y metadatos
+ */
 public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
+    /**
+     * arma el nodo raiz y conserva el terminador final para traduccion.
+     */
     @Override
     public AstNode visitProgram(CodexLatinusParser.ProgramContext ctx) {
         AstNode program = node(AstNode.Tipo.PROGRAM, ctx);
@@ -58,6 +66,10 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         return function;
     }
 
+    /**
+     * deja los parametros al inicio de children y luego locales/cuerpo.
+     * semantic y translator , orden para leer el arvlbol
+     */
     private void addFunctionParts(AstNode function, CodexLatinusParser.ParamListContext params,
                                    CodexLatinusParser.LocalVarSectionContext locals,
                                    java.util.List<CodexLatinusParser.StatementContext> statements) {
@@ -368,6 +380,9 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
                 .child(visit(ctx.structLiteral()));
     }
 
+    /**
+     * normaliza accesos encadenados como a.b[i].c en pasos homogeneos.
+     */
     @Override
     public AstNode visitLvalue(CodexLatinusParser.LvalueContext ctx) {
         AstNode access = node(AstNode.Tipo.VAR_ACCESS, ctx)
@@ -424,6 +439,9 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
         return binary(ctx, ctx.multiplicativeExpr());
     }
 
+    /**
+     * transforma reglas recursivas izquierdas de expresion en nodos binarios.
+     */
     private AstNode binary(ParserRuleContext ctx, ParserRuleContext recursivePart) {
         if (recursivePart == null) {
             return visit((ParserRuleContext) ctx.getChild(0));
@@ -491,6 +509,9 @@ public class AstBuilder extends CodexLatinusBaseVisitor<AstNode> {
             .attr("raw", text);
     }
 
+    /**
+     * etqta el tipo literal pra que semantic no dependa del tkn de antlr.
+     */
     private String literalType(int tokenType) {
         return switch (tokenType) {
             case CodexLatinusParser.NUMERUS_LIT -> "NUMERUS";

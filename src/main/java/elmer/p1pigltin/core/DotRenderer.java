@@ -6,9 +6,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
+
 public final class DotRenderer {
     private DotRenderer() { }
 
+   
     public static Optional<Path> renderizarPng(String dotContent, Path salidaPng) {
         Path dotFile = null;
         try {
@@ -28,7 +30,7 @@ public final class DotRenderer {
                 try {
                     Files.deleteIfExists(dotFile);
                 } catch (IOException ignored) {
-                    // El archivo temporal no afecta el resultado del renderer.
+
                 }
             }
         }

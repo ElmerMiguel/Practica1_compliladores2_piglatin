@@ -4,9 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+
 public final class AstDotExporter {
     private AstDotExporter() { }
 
+    /**
+     * recorrer arbol
+     */
     public static String exportar(AstNode raiz) {
         StringBuilder dot = new StringBuilder("digraph AST {\n")
                 .append("    node [shape=box, fontname=\"Courier\"];\n");
@@ -58,6 +62,9 @@ public final class AstDotExporter {
         return String.join("\n", lines);
     }
 
+    /**
+     * etqt enlaces con su rol semantico pra leer mejor arbol.
+     */
     private static String edgeLabel(AstNode node, int index) {
         return switch (node.tipo) {
             case VAR_DECL, ARRAY_DECL -> index == 0 ? "init/size" : "init";

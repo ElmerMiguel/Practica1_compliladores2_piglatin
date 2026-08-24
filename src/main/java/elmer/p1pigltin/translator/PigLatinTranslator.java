@@ -4,7 +4,14 @@ import elmer.p1pigltin.ast.AstNode;
 
 import java.util.stream.Collectors;
 
+/**
+ * traductor del ast a pig latin.
+ *
+ */
 public class PigLatinTranslator {
+    /**
+     * dispatch princip por tipo de nodo.
+     */
     public String traducir(AstNode node) {
         return switch (node.tipo) {
                 case PROGRAM -> node.children.stream().map(this::traducir).collect(Collectors.joining("\n"))
@@ -134,6 +141,9 @@ public class PigLatinTranslator {
     private String traducirLlamada(AstNode node) {
         return word(node, "nombre") + "("
                 + node.children.stream().map(this::traducir).collect(Collectors.joining(", ")) + ")";
+    /**
+     * respeta ls 2 frms de seccion,  bloque normal con > y bloque local con [].
+     */
     }
 
     private String quitarPuntoYComa(String value) {
@@ -202,6 +212,9 @@ public class PigLatinTranslator {
         };
     }
 
+    /**
+     * pgLatin para ids y keywords.
+     */
     public static final class PigLatinWordRules {
         private PigLatinWordRules() { }
 

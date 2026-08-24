@@ -4,9 +4,15 @@ import elmer.p1pigltin.ast.AstNode;
 
 import java.util.Optional;
 
+/**
+ * eval parcial de expresiones numrcs pra validaciones estaticas.
+ */
 public final class ConstantFolder {
     private ConstantFolder() { }
 
+    /**
+     *  pliegr litrls y binarias numericas pra evitar falsas suposiciones.
+     */
     public static Optional<Object> evaluar(AstNode expr) {
         if (expr == null) return Optional.empty();
         if (expr.tipo == AstNode.Tipo.LITERAL) {

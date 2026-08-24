@@ -5,7 +5,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * nodo generico del ast.
+ *
+ *  cntralizar la estructura en tipo + attrs + children 
+ */
 public class AstNode {
+    /**
+     * tipos base que usa el cmpldr pra semantic y traduccion.
+     */
     public enum Tipo {
         PROGRAM, SECTION, VAR_DECL, ARRAY_DECL, STRUCT_DEF, STRUCT_VAR_DECL,
         ASSIGN, BLOCK, IF, WHILE, DO_WHILE, FOR, FUNC_DEF, PARAM,
@@ -26,11 +34,17 @@ public class AstNode {
         this.column = column;
     }
 
+    /**
+     * agreg un atrib semantico del nodo y permite chaining.
+     */
     public AstNode attr(String name, Object value) {
         attrs.put(name, value);
         return this;
     }
 
+    /**
+     * agreg hijo solo si no es null para no romper recorridos posteriores.
+     */
     public AstNode child(AstNode node) {
         if (node != null) {
             children.add(node);

@@ -10,7 +10,14 @@ import elmer.p1pigltin.translator.PigLatinTranslator;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 
+/**
+ * flujo de compilacion
+ */
 public class CompilationPipeline {
+    /**
+     * eject lexer, parser, ast, semantica y traduccion prOrden.
+     * si hay errores se crta.
+     */
     public CompilationResult compile(String source) {
         ErrorReporter reporter = new ErrorReporter();
 
@@ -40,6 +47,7 @@ public class CompilationPipeline {
         return new CompilationResult(ast, tabla, reporter, pigLatin, stackRecorder.snapshots());
     }
 
+   //para gui
     public static final class CompilationResult {
         private final AstNode ast;
         private final SymbolTable tabla;
@@ -76,6 +84,7 @@ public class CompilationPipeline {
             return pila;
         }
 
+        //orueba consola
         public String prettyPrint() {
             StringBuilder output = new StringBuilder();
             prettyPrint(ast, output, 0);
